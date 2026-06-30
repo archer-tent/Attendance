@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理员考勤后台管理</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Microsoft YaHei;}
+body{background:#f0f2f5;padding:20px;}
+.login-box{max-width:400px;margin:80px auto;background:#fff;padding:30px;border-radius:12px;box-shadow:0 2px 12px #e5e7eb;}
+.login-box h2{text-align:center;color:#2d8cf0;margin-bottom:24px;}
+.input{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
+.login-btn{width:100%;padding:14px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;}
+.header{background:#2d8cf0;color:#fff;padding:16px 20px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.logout{background:#fff;color:#2d8cf0;padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;}
+th,td{border:1px solid #eee;padding:10px;text-align:center;font-size:13px;}
+th{background:#f7f8fa;}
+.edit-input{width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;}
+.btn-save{background:#19be6b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+.btn-del{background:#f56c6c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+.hide{display:none !important;}
+.late{color:#f56c6c;font-weight:bold;}
+.normal{color:#19be6b;}
+h3{margin:16px 0;color:#333;}
+.tip{color:#666;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<!-- 管理员登录 -->
+<div id="adminLogin">
+  <div class="login-box">
+    <h2>管理员后台登录</h2>
+    <input class="input" id="adminUser" placeholder="管理员账号：admin">
+    <input class="input" type="password" id="adminPwd" placeholder="密码：123456">
+    <button class="login-btn" onclick="adminLogin()">进入管理后台</button>
+    <p style="text-align:center;margin-top:14px;color:#999">仅admin账号可登录</p>
+  </div>
+</div>
+
+<!-- 管理后台主页 -->
+<div id="adminMain" class="hide">
+  <div class="header">
+    <h2>全员考勤总后台（修改同步员工打卡页面）</h2>
+    <button class="logout" onclick="adminLogout()">退出管理</button>
+  </div>
+  <p class="tip">说明：修改打卡时间、审核状态后自动保存，员工打开打卡页面会实时同步更新</p>
+  <h3>全部员工打卡记录总表</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>员工账号</th>
+        <th>日期</th>
+        <th>早打卡时间</th>
+        <th>中打卡时间</th>
+        <th>晚打卡时间</th>
+        <th>下班时间</th>
+        <th>审核状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="allRecordBox"></tbody>
+  </table>
+</div>
+
+<script>
+const userList = {
+  emp1:{pwd:"123456",role:"user"},
+  emp2:{pwd:"123456",role:"user"},
+  emp3:{pwd:"123456",role:"user"},
+  emp4:{pwd:"123456",role:"user"},
+  emp5:{pwd:"123456",role:"user"},
+  emp6:{pwd:"123456",role:"user"},
+  admin:{pwd:"123456",role:"admin"}
+};
+let clockRecord = [];
+
+// 管理员登录
+function adminLogin(){
+  const u = document.getElementById("adminUser").value.trim();
+  const p = document.getElementById("adminPwd").value.trim();
+  if(u === "admin" && p === "123456"){
+    document.getElementById("adminLogin").classList.add("hide");
+    document.getElementById("adminMain").classList.remove("hide");
+    loadData();
+    renderAllRecord();
+  }else{
+    alert("管理员账号密码错误");
+  }
+}
+
+// 退出后台
+function adminLogout(){
+  document.getElementById("adminLogin").classList.remove("hide");
+  document.getElementById("adminMain").classList.add("hide");
+}
+
+// 读取本地存储打卡数据
+function loadData(){
+  clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+}
+
+// 保存数据到本地存储，员工页面自动接收更新
+function saveData(){
+  localStorage.setItem("clockData", JSON.stringify(clockRecord));
+  renderAllRecord();
+}
+
+// 判断迟到
+function isLate(hourStr, limitHour){
+  if(!hourStr) return "";
+  let h = parseInt(hourStr.split(":")[0]);
+  return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
+}
+
+// 渲染全部员工记录，带编辑输入框
+function renderAllRecord(){
+  loadData();
+  const box = document.getElementById("allRecordBox");
+  box.innerHTML = "";
+  if(clockRecord.length === 0){
+    box.innerHTML = "<tr><td colspan='8'>暂无任何打卡记录</td></tr>";
+    return;
+  }
+  clockRecord.forEach((item,idx)=>{
+    box.innerHTML += `
+    <tr>
+      <td>${item.user}</td>
+      <td>${item.date}</td>
+      <td><input class="edit-input" value="${item.t1}" id="t1_${idx}"> ${isLate(item.t1,11)}</td>
+      <td><input class="edit-input" value="${item.t2}" id="t2_${idx}"> ${isLate(item.t2,16)}</td>
+      <td><input class="edit-input" value="${item.t3}" id="t3_${idx}"> ${isLate(item.t3,18)}</td>
+      <td><input class="edit-input" value="${item.off}" id="off_${idx}"></td>
+      <td>
+        <select id="audit_${idx}">
+          <option value="待审核" ${item.audit==="待审核"?"selected":""}>待审核</option>
+          <option value="已通过" ${item.audit==="已通过"?"selected":""}>已通过</option>
+          <option value="已驳回" ${item.audit==="已驳回"?"selected":""}>已驳回</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn-save" onclick="editRecord(${idx})">保存修改</button>
+        <button class="btn-del" onclick="delRecord(${idx})">删除本条</button>
+      </td>
+    </tr>
+    `;
+  })
+}
+
+// 保存修改记录
+function editRecord(index){
+  const row = clockRecord[index];
+  row.t1 = document.getElementById(`t1_${index}`).value.trim();
+  row.t2 = document.getElementById(`t2_${index}`).value.trim();
+  row.t3 = document.getElementById(`t3_${index}`).value.trim();
+  row.off = document.getElementById(`off_${index}`).value.trim();
+  row.audit = document.getElementById(`audit_${index}`).value;
+  saveData();
+  alert("修改已保存，员工打卡页面同步更新");
+}
+
+// 删除单条打卡记录
+function delRecord(index){
+  if(confirm("确定删除该员工今日全部打卡记录？删除后员工页面同步消失")){
+    clockRecord.splice(index,1);
+    saveData();
+  }
+}
+
+window.onload = function(){
+  loadData();
+}
+</script>
+</body>
+</html>
