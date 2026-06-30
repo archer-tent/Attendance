@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title><span class="zh">员工考勤系统</span><span class="th">ระบบลงเวลาพนักงาน</span></title>
+<title><span class="zh">员工三段打卡考勤系统</span><span class="th">ระบบลงเวลาพนักงาน</span></title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system, BlinkMacSystemFont, "Microsoft YaHei";}
 body{background:#f4f5f7;padding-bottom:40px;}
@@ -46,8 +46,8 @@ body.lang-th .th{display:block;}
 .clock-box{text-align:center;}
 .time-text{font-size:42px;color:#2d8cf0;margin:20px 0;font-weight:500;}
 .location-tip{font-size:14px;color:#666;margin-bottom:20px;line-height:1.6;}
-.clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;cursor:pointer;}
 .tip-text{margin-top:16px;font-size:15px;line-height:1.7;}
+.clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;cursor:pointer;}
 /* 表格通用 */
 table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px;}
 th,td{border:1px solid #eee;padding:10px 4px;text-align:center;}
@@ -58,20 +58,18 @@ th{background:#f7f8fa;}
 .btn-del{background:#f56c6c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
 .btn-add{background:#409EFF;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;margin-bottom:10px;}
 /* 弹窗样式 */
-.modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;}
+.modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;display:none;}
 .modal-box{background:#fff;width:90%;max-width:420px;padding:30px;border-radius:14px;max-height:90vh;overflow-y:auto;}
 .modal-box h3{text-align:center;margin-bottom:20px;color:#222;}
 .modal-input{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
 .modal-select{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
-.modal-btn-group{display:flex;gap:10px;}
+.modal-btn-group{display:flex;gap:10px;margin-top:20px;}
 .modal-confirm{flex:1;padding:12px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;cursor:pointer;}
-.modal-close{flex:1;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;}
+.modal-cancel{flex:1;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;}
 /* 工具类 */
 .hide{display:none !important;}
 .late{color:#f56c6c;font-weight:bold;}
 .normal{color:#19be6b;}
-.absent-full{color:#900;font-weight:bold;}
-.absent-half{color:#c66a00;font-weight:bold;}
 .miss-clock{color:#888;font-style:italic;}
 .full-attend{color:#008833;font-weight:bold;background:#e8fff0;padding:2px 6px;border-radius:4px;}
 .admin-tab-switch{display:flex;gap:10px;margin:10px 0;}
@@ -79,204 +77,63 @@ th{background:#f7f8fa;}
 .admin-tab-switch button.active{background:#2d8cf0;color:#fff;}
 .stat-block{background:#f8f9fa;padding:12px;border-radius:8px;margin:10px 0;}
 .warn{color:#e64340;font-weight:bold;}
+.absent-full{color:#900;font-weight:bold;}
+.absent-half{color:#c66a00;font-weight:bold;}
 </style>
-</head>
-<body class="lang-zh">
-
-<!-- 员工登录页面 -->
-<div id="loginPage" class="login-wrap">
-  <div class="login-card">
-    <h2>
-      <span class="zh">考勤系统</span>
-      <span class="th">ระบบลงเวลาพนักงาน</span>
-    </h2>
-    <div class="input-box">
-      <input type="text" id="username" placeholder="账号：FANG / AMP / PA / TANG / KAN / AUM / admin">
-    </div>
-    <div class="input-box">
-      <input type="password" id="password" placeholder="密码统一：123456">
-    </div>
-    <button class="btn" onclick="userLogin()">
-      <span class="zh">登录打卡</span>
-      <span class="th">เข้าสู่ระบบลงเวลา</span>
-    </button>
-  </div>
-</div>
-
-<!-- 主页面（员工打卡） -->
-<div id="mainPage" class="hide">
-  <div class="header">
-    <h1>
-      <span class="zh">手机考勤打卡</span>
-      <span class="th">ลงเวลาผ่านมือถือ</span>
-    </h1>
-    <div class="header-buttons">
-      <!-- 语言切换按钮 -->
-      <button class="lang-btn" onclick="toggleLang()">
-        <span class="zh">ภาษาไทย</span>
-        <span class="th">中文</span>
-      </button>
-      <!-- 电脑端才显示管理员入口，手机自动隐藏 -->
-      <button class="admin-enter-btn" onclick="openAdminModal()">管理员后台</button>
-      <button class="logout-btn" onclick="logout()">
-        <span class="zh">退出</span>
-        <span class="th">ออกจากระบบ</span>
-      </button>
-    </div>
-  </div>
-
-  <div class="tab-bar">
-    <div class="tab active" onclick="switchTab('clock')">
-      <span class="zh">打卡</span>
-      <span class="th">ลงเวลา</span>
-    </div>
-    <div class="tab" onclick="switchTab('record')">
-      <span class="zh">我的记录</span>
-      <span class="th">ประวัติของฉัน</span>
-    </div>
-  </div>
-
-  <!-- 打卡页面 -->
-  <div id="clockPage" class="page show">
-    <div class="clock-box">
-      <div id="nowTime" class="time-text">00:00:00</div>
-      <div class="location-tip" id="locTip">
-        <span class="zh">正在获取定位...</span>
-        <span class="th">กำลังตรวจสอบตำแหน่ง GPS...</span>
-      </div>
-      <div class="tip-text">
-        <span class="zh">
-        打卡时段规则：<br>
-        ①早打卡窗口：10:30 ~ 11:30（11点后迟到）<br>
-        ②中打卡窗口：15:30 ~ 16:30（16点后迟到）<br>
-        ③晚打卡窗口：17:30 ~ 18:30（18点后迟到）<br>
-        ④下班/加班窗口：21:00 ~ 23:00（21:30后算加班）<br>
-        说明：任意时段窗口均可直接打卡，无需按顺序；未打卡时段记为缺卡缺勤
-        </span>
-        <span class="th">
-        กฎช่วงเวลาลงเวลา:<br>
-        ① ช่วงลงเช้า: 10:30 - 11:30 (หลัง 11 โมงถือว่าสาย)<br>
-        ② ช่วงลงกลางวัน: 15:30 - 16:30 (หลัง 16 โมงถือว่าสาย)<br>
-        ③ ช่วงลงเย็น: 17:30 - 18:30 (หลัง 18 โมงถือว่าสาย)<br>
-        ④ เลิกงาน/โอที: 21:00 - 23:00 (หลัง 21:30 นับเป็นโอที)<br>
-        หมายเหตุ: สามารถลงเวลาช่วงไหนก็ได้ ไม่ต้องลงตามลำดับ ช่วงไหนไม่ลงจะนับว่าขาดลงเวลา
-        </span>
-      </div>
-      <button class="clock-submit" id="clockBtn">
-        <span class="zh">立即打卡</span>
-        <span class="th">ลงเวลาตอนนี้</span>
-      </button>
-      <div class="tip-text" id="clockTip"></div>
-    </div>
-  </div>
-
-  <!-- 个人记录页面 -->
-  <div id="recordPage" class="page">
-    <h3>
-      <span class="zh">我的打卡记录（管理员修改实时同步）</span>
-      <span class="th">ประวัติการลงเวลาของฉัน (แก้ไขจากแอดมินอัปเดตทันที)</span>
-    </h3>
-    <table>
-      <thead>
-        <tr>
-          <th><span class="zh">日期</span><span class="th">วันที่</span></th>
-          <th><span class="zh">早打卡</span><span class="th">ลงเช้า</span></th>
-          <th><span class="zh">中打卡</span><span class="th">ลงกลางวัน</span></th>
-          <th><span class="zh">晚打卡</span><span class="th">ลงเย็น</span></th>
-          <th><span class="zh">下班</span><span class="th">เลิกงาน</span></th>
-          <th><span class="zh">状态标记</span><span class="th">สถานะ</span></th>
-          <th><span class="zh">审核状态</span><span class="th">ตรวจสอบ</span></th>
-        </tr>
-      </thead>
-      <tbody id="recordList"></tbody>
-    </table>
-  </div>
-</div>
-
-<!-- 管理员登录弹窗（纯中文，不翻译） -->
-<div id="adminModal" class="modal-mask hide">
-  <div class="modal-box">
-    <h3>管理员验证登录</h3>
-    <input class="modal-input" id="adminUser" placeholder="管理员账号 admin">
-    <input class="modal-input" type="password" id="adminPwd" placeholder="密码 123456">
-    <div class="modal-btn-group">
-      <button class="modal-confirm" onclick="adminLogin()">进入后台</button>
-      <button class="modal-close" onclick="closeAdminModal()">取消</button>
-    </div>
-  </div>
-</div>
-
-<!-- 新增考勤弹窗（纯中文，不翻译） -->
-<div id="addRecordModal" class="modal-mask hide">
-  <div class="modal-box">
-    <h3>手动添加员工考勤（管理员不受时段限制）</h3>
-    <select class="modal-select" id="addEmp">
-      <option value="FANG">FANG</option>
-      <option value="AMP">AMP</option>
-      <option value="PA">PA</option>
-      <option value="TANG">TANG</option>
-      <option value="KAN">KAN</option>
-      <option value="AUM">AUM</option>
-    </select>
-    <input class="modal-input" type="date" id="addDate">
-    <input class="modal-input" placeholder="早打卡 如09:30，无则留空" id="addT1">
-    <input class="modal-input" placeholder="中打卡 如15:20，无则留空" id="addT2">
-    <input class="modal-input" placeholder="晚打卡 如17:10，无则留空" id="addT3">
-    <input class="modal-input" placeholder="下班打卡 如20:00，无则留空" id="addOff">
-    <select class="modal-select" id="addAbsent">
-      <option value="">无旷工</option>
-      <option value="full">全天旷工</option>
-      <option value="half">半日旷工</option>
-    </select>
-    <div class="modal-btn-group">
-      <button class="modal-confirm" onclick="saveAddRecord()">保存</button>
-      <button class="modal-close" onclick="closeAddModal()">取消</button>
-    </div>
-  </div>
-</div>
-
-<!-- 管理员后台页面（全部中文，不翻译） -->
-<div id="adminPage" class="hide" style="padding:15px;">
-  <div class="header">
-    <h1>全员考勤管理后台</h1>
-    <button class="logout-btn" onclick="backStaffPage()">返回员工打卡主页</button>
-  </div>
-  <p style="margin:12px 0;color:#666;">修改后自动保存，所有员工页面实时同步更新；管理员新增/编辑不受打卡时段限制</p>
-  <button class="btn-add" onclick="openAddModal()">手动新增考勤记录</button>
-  <div class="admin-tab-switch">
-    <button id="tabByUser" class="active" onclick="switchAdminView('user')">按员工查看</button>
-    <button id="tabByDate" onclick="switchAdminView('date')">按日期查看</button>
-  </div>
-  <!-- 按员工视图 -->
-  <div id="viewByUser">
-    <div id="userWrap"></div>
-  </div>
-  <!-- 按日期视图 -->
-  <div id="viewByDate" class="hide">
-    <div id="dateWrap"></div>
-  </div>
-</div>
-
+<!-- Supabase 云数据库SDK + 你的密钥 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ====================== 配置区 ======================
-const COMPANY_LAT = 18.691944;
-const COMPANY_LNG = 98.939444;
-const ALLOW_RANGE = 100;
-// 员工账号更新：FANG、AMP、PA、TANG、KAN、AUM
-const userList = {
-  FANG:{pwd:"123456",role:"user"},
-  AMP:{pwd:"123456",role:"user"},
-  PA:{pwd:"123456",role:"user"},
-  TANG:{pwd:"123456",role:"user"},
-  KAN:{pwd:"123456",role:"user"},
-  AUM:{pwd:"123456",role:"user"},
-  admin:{pwd:"164315",role:"admin"}
-};
-const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
-let currentUser = null;
-let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
-let currentLocation = null;
-let adminViewType = "user";
+const SUPABASE_URL = "https://ngtjpezuoppsqxttzypx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_txzhwyOGKx9GwrWXxfZlcg_qixhykYE";
+const { createClient } = supabase;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===================== 全局通用云端同步函数 =====================
+// 新增/更新单条记录到云端
+async function uploadToCloud(userName, recordDate){
+  const targetItem = clockRecord.find(i => i.user === userName && i.date === recordDate);
+  if(!targetItem) return;
+  const { data } = await supabase
+    .from('clock_records')
+    .select('id')
+    .eq('user_name', userName)
+    .eq('record_date', recordDate);
+  if(data.length > 0){
+    // 更新已有记录
+    await supabase
+      .from('clock_records')
+      .update({
+        t1: targetItem.t1,
+        t2: targetItem.t2,
+        t3: targetItem.t3,
+        off: targetItem.off,
+        absent: targetItem.absent,
+        audit: targetItem.audit
+      })
+      .eq('user_name', userName)
+      .eq('record_date', recordDate);
+  }else{
+    // 插入新记录
+    await supabase.from('clock_records').insert([{
+      user_name: userName,
+      record_date: recordDate,
+      t1: targetItem.t1,
+      t2: targetItem.t2,
+      t3: targetItem.t3,
+      off: targetItem.off,
+      absent: targetItem.absent,
+      audit: targetItem.audit
+    }]);
+  }
+}
+// 删除云端单条记录
+async function deleteCloudRecord(userName, recordDate){
+  await supabase
+    .from('clock_records')
+    .delete()
+    .eq('user_name', userName)
+    .eq('record_date', recordDate);
+}
 
 // 双语切换函数
 function toggleLang(){
@@ -291,7 +148,7 @@ function toggleLang(){
     localStorage.setItem("siteLang","zh");
   }
 }
-// 页面加载读取本地缓存语言
+// 加载本地语言配置
 function loadLangSetting(){
   const saveLang = localStorage.getItem("siteLang") || "zh";
   const body = document.body;
@@ -304,300 +161,197 @@ function loadLangSetting(){
   }
 }
 
-// 获取本周起止日期
-function getThisWeekRange(){
-  const now = new Date();
-  const day = now.getDay();
-  const start = new Date(now.getTime() - (day||7-1)*24*3600*1000);
-  const end = new Date(start.getTime() + 6*24*3600*1000);
-  const format = d=>`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-  return {start:format(start),end:format(end)};
+// 配置
+const COMPANY_LAT = 18.691944;
+const COMPANY_LNG = 98.939444;
+const ALLOW_RANGE = 100;
+const userList = {
+  FANG:{pwd:"123456",role:"user"},
+  AMP:{pwd:"123456",role:"user"},
+  PA:{pwd:"123456",role:"user"},
+  TANG:{pwd:"123456",role:"user"},
+  KAN:{pwd:"123456",role:"user"},
+  AUM:{pwd:"123456",role:"user"},
+  admin:{pwd:"123456",role:"admin"}
+};
+const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
+let currentUser = null;
+let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+let adminViewType = "user";
+
+// 时分转分钟
+function timeToMin(h,m){
+  return h*60 + m;
 }
-// 日期转标准字符串
-function fmtDate(d){
-  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-}
-// 时分转分钟，方便区间判断
-function timeToMin(h, m){
-  return h * 60 + m;
-}
-// 判断当前时间属于哪一个打卡时段（返回1/2/3/4，不在窗口返回0）
+// 获取当前所属打卡时段 1早/2中/3晚/4下班/0不在时段
 function getCurrentClockStep(){
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();
-  const curMin = timeToMin(h, m);
-  if(curMin >= timeToMin(10,30) && curMin <= timeToMin(11,30)) return 1;
-  if(curMin >= timeToMin(15,30) && curMin <= timeToMin(16,30)) return 2;
-  if(curMin >= timeToMin(17,30) && curMin <= timeToMin(18,30)) return 3;
-  if(curMin >= timeToMin(21,0) && curMin <= timeToMin(23,0)) return 4;
+  const cur = timeToMin(h,m);
+  const m1s = timeToMin(10,30);
+  const m1e = timeToMin(11,30);
+  const m2s = timeToMin(15,30);
+  const m2e = timeToMin(16,30);
+  const m3s = timeToMin(17,30);
+  const m3e = timeToMin(18,30);
+  const m4s = timeToMin(21,0);
+  const m4e = timeToMin(23,0);
+  if(cur >= m1s && cur <= m1e) return 1;
+  if(cur >= m2s && cur <= m2e) return 2;
+  if(cur >= m3s && cur <= m3e) return 3;
+  if(cur >= m4s && cur <= m4e) return 4;
   return 0;
 }
 // 迟到标记双语
-function isLate(hourStr, limitHour){
-  if(!hourStr) return "";
-  let h = parseInt(hourStr.split(":")[0]);
+function isLate(timeStr, limitHour){
+  if(!timeStr) return "";
+  const h = parseInt(timeStr.split(":")[0]);
   if(h >= limitHour){
     return `<span class='late'><span class="zh">迟到</span><span class="th">สาย</span></span>`;
   }else{
     return `<span class='normal'><span class="zh">正常</span><span class="th">ปกติ</span></span>`;
   }
 }
-// 统计单条记录迟到次数
-function countLateItem(item){
+// 统计迟到次数
+function countLate(item){
   let cnt = 0;
-  if(item.t1){let h=+item.t1.split(":")[0];if(h>=11)cnt++}
-  if(item.t2){let h=+item.t2.split(":")[0];if(h>=16)cnt++}
-  if(item.t3){let h=+item.t3.split(":")[0];if(h>=18)cnt++}
+  if(item.t1){const h=parseInt(item.t1.split(":")[0]);if(h>=11)cnt++;}
+  if(item.t2){const h=parseInt(item.t2.split(":")[0]);if(h>=16)cnt++;}
+  if(item.t3){const h=parseInt(item.t3.split(":")[0]);if(h>=18)cnt++;}
   return cnt;
 }
-// 实时时钟
-function updateTime(){
+// 保存本地缓存
+function saveClockData(){
+  localStorage.setItem("clockData", JSON.stringify(clockRecord));
+}
+// 计算两点距离米
+function getDistance(lat1,lng1,lat2,lng2){
+  const rad = Math.PI / 180;
+  const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
+  return 2*6371000*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+// 更新页面时间
+function updateClock(){
   const d = new Date();
   const h = String(d.getHours()).padStart(2,"0");
   const m = String(d.getMinutes()).padStart(2,"0");
   const s = String(d.getSeconds()).padStart(2,"0");
   document.getElementById("nowTime").innerText = `${h}:${m}:${s}`;
 }
-setInterval(updateTime,1000);
-updateTime();
+setInterval(updateClock,1000);
+updateClock();
 
-// 获取GPS定位
-function getLocation(){
-  const locTip = document.getElementById("locTip");
-  if(!navigator.geolocation){
-    locTip.innerHTML = `<span class="zh">设备不支持定位</span><span class="th">อุปกรณ์ไม่รองรับ GPS</span>`;
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    function(pos){
-      currentLocation = {lat: pos.coords.latitude,lng: pos.coords.longitude};
-      let dis = getDistance(COMPANY_LAT, COMPANY_LNG, currentLocation.lat, currentLocation.lng);
-      if(dis <= ALLOW_RANGE){
-        locTip.innerHTML = `<span class="zh">定位正常，距公司${Math.round(dis)}米，可打卡</span><span class="th">ตรวจพบตำแหน่งปกติ ห่างสถานที่ทำงาน ${Math.round(dis)} เมตร สามารถลงเวลาได้</span>`;
-      }else{
-        locTip.innerHTML = `<span class="zh">超出打卡范围${Math.round(dis)}米，禁止打卡</span><span class="th">ห่างเกินขอบเขต ${Math.round(dis)} เมตร ห้ามลงเวลา</span>`;
-      }
-    },
-    function(err){
-      if(err.code === 1){
-        locTip.innerHTML = `<span class="zh">定位权限已关闭，请开启</span><span class="th">ปิดสิทธิ์ GPS กรุณาเปิดสิทธิ์</span>`;
-      }else{
-        locTip.innerHTML = `<span class="zh">定位获取失败</span><span class="th">ดึงตำแหน่งไม่สำเร็จ</span>`;
-      }
-      currentLocation = null;
-    },
-    {enableHighAccuracy:true,timeout:8000}
-  );
-}
-// 经纬度距离计算（米）
-function getDistance(lat1,lng1,lat2,lng2){
-  const rad = Math.PI / 180;
-  const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
-  return 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a)) * 6371 * 1000;
-}
-// 切换员工端标签
-function switchTab(pageId){
-  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
-  document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
-  event.target.classList.add("active");
-  document.getElementById(pageId+"Page").classList.add("show");
-}
-// 员工账号登录
-function userLogin(){
-  const un = document.getElementById("username").value.trim();
-  const pw = document.getElementById("password").value.trim();
-  if(userList[un] && userList[un].pwd === pw){
-    currentUser = un;
-    localStorage.setItem("loginUser",un);
-    document.getElementById("loginPage").classList.add("hide");
-    document.getElementById("mainPage").classList.remove("hide");
-    getLocation();
-    renderRecord();
-  }else{
-    const lang = localStorage.getItem("siteLang") || "zh";
-    if(lang === "zh"){
-      alert("账号或密码错误\n可用账号：FANG / AMP / PA / TANG / KAN / AUM / admin，密码123456");
-    }else{
-      alert("ชื่อบัญชีหรือรหัสผ่านผิด\nบัญชีที่ใช้ได้: FANG / AMP / PA / TANG / KAN / AUM / admin รหัส 123456");
-    }
-  }
-}
-// 退出登录
-function logout(){
-  currentUser = null;
-  localStorage.removeItem("loginUser");
-  document.getElementById("loginPage").classList.remove("hide");
-  document.getElementById("mainPage").classList.add("hide");
-  document.getElementById("adminPage").classList.add("hide");
-}
-// 管理员弹窗
-function openAdminModal(){document.getElementById("adminModal").classList.remove("hide");document.getElementById("adminUser").value="";document.getElementById("adminPwd").value="";}
-function closeAdminModal(){document.getElementById("adminModal").classList.add("hide");}
-// 新增考勤弹窗
-function openAddModal(){
-  document.getElementById("addRecordModal").classList.remove("hide");
-  document.getElementById("addDate").value = fmtDate(new Date()).replace("/","-").replace("/","-");
-  document.getElementById("addT1").value="";
-  document.getElementById("addT2").value="";
-  document.getElementById("addT3").value="";
-  document.getElementById("addOff").value="";
-  document.getElementById("addAbsent").value="";
-}
-function closeAddModal(){document.getElementById("addRecordModal").classList.add("hide");}
-// 管理员登录
-function adminLogin(){
-  const u = document.getElementById("adminUser").value.trim();
-  const p = document.getElementById("adminPwd").value.trim();
-  if(u === "admin" && p === "164315"){
-    closeAdminModal();
-    document.getElementById("mainPage").classList.add("hide");
-    document.getElementById("adminPage").classList.remove("hide");
-    renderAdminView();
-  }else{
-    alert("管理员账号密码错误");
-  }
-}
-// 返回员工页面
-function backStaffPage(){
-  document.getElementById("adminPage").classList.add("hide");
-  document.getElementById("mainPage").classList.remove("hide");
-  renderRecord();
-}
-// 切换管理员视图
-function switchAdminView(type){
-  adminViewType = type;
-  document.getElementById("tabByUser").classList.toggle("active",type==="user");
-  document.getElementById("tabByDate").classList.toggle("active",type==="date");
-  document.getElementById("viewByUser").classList.toggle("hide",type!=="user");
-  document.getElementById("viewByDate").classList.toggle("hide",type!=="date");
-  renderAdminView();
-}
-// 打卡核心逻辑【重点修改：取消顺序限制，当前窗口直接写入对应字段】
-document.getElementById("clockBtn").onclick = function(){
+// ===================== 员工打卡按钮点击（已接入云端上传） =====================
+document.getElementById("clockBtn").onclick = async function(){
   const tip = document.getElementById("clockTip");
   const lang = localStorage.getItem("siteLang") || "zh";
-  if(!currentLocation){
-    if(lang === "zh") tip.innerHTML = `<span class="warn">未获取定位，无法打卡</span>`;
-    else tip.innerHTML = `<span class="warn">ไม่พบตำแหน่ง GPS ไม่สามารถลงเวลาได้</span>`;
+  if(!navigator.geolocation){
+    tip.innerHTML = `<span class="warn"><span class="zh">浏览器无定位权限，无法打卡</span><span class="th">เบราว์เซอร์ไม่มีสิทธิ์ตำแหน่ง ไม่สามารถลงเวลาได้</span></span>`;
     return;
   }
-  let dis = getDistance(COMPANY_LAT,COMPANY_LNG,currentLocation.lat,currentLocation.lng);
-  if(dis > ALLOW_RANGE){
-    if(lang === "zh") tip.innerHTML = `<span class="warn">不在打卡范围内，禁止打卡</span>`;
-    else tip.innerHTML = `<span class="warn">อยู่นอกขอบเขตสถานที่ทำงาน ห้ามลงเวลา</span>`;
-    return;
-  }
-
-  const now = new Date();
-  const dateStr = fmtDate(now);
-  const timeStr = now.toLocaleTimeString();
-  const hour = now.getHours();
-  const step = getCurrentClockStep();
-
-  // 当前不在任何打卡窗口，直接拦截
-  if(step === 0){
-    if(lang === "zh") tip.innerHTML = `<span class="warn">当前不在任何打卡时段窗口，无法打卡</span>`;
-    else tip.innerHTML = `<span class="warn">ขณะนี้ไม่อยู่ช่วงลงเวลาใดๆ ห้ามลงเวลา</span>`;
-    return;
-  }
-
-  let dayData = clockRecord.find(item=>item.user===currentUser && item.date===dateStr);
-  if(!dayData){
-    dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};
-    clockRecord.push(dayData);
-  }
-
-  // 根据当前时段直接写入对应字段，不判断前面时段是否已打卡
-  let hasExist = false;
-  let tipTextZh = "";
-  let tipTextTh = "";
-  if(step === 1){
-    if(dayData.t1){
-      hasExist = true;
-      tipTextZh = "今日早打卡已完成，不可重复打卡";
-      tipTextTh = "ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-    }else{
-      dayData.t1 = timeStr;
-      tipTextZh = `早打卡成功 ${timeStr}`;
-      tipTextTh = `ลงเวลาเช้าสำเร็จ ${timeStr}`;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const dis = getDistance(pos.coords.latitude, pos.coords.longitude, COMPANY_LAT, COMPANY_LNG);
+    if(dis > ALLOW_RANGE){
+      if(lang === "zh") tip.innerHTML = `<span class="warn">超出打卡范围，禁止打卡</span>`;
+      else tip.innerHTML = `<span class="warn">อยู่นอกขอบเขตสถานที่ทำงาน ห้ามลงเวลา</span>`;
+      return;
     }
-  }else if(step === 2){
-    if(dayData.t2){
-      hasExist = true;
-      tipTextZh = "今日中打卡已完成，不可重复打卡";
-      tipTextTh = "ลงเวลากลางวันของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-    }else{
-      dayData.t2 = timeStr;
-      tipTextZh = `中打卡成功 ${timeStr}`;
-      tipTextTh = `ลงเวลากลางวันสำเร็จ ${timeStr}`;
+    const step = getCurrentClockStep();
+    if(step === 0){
+      if(lang === "zh") tip.innerHTML = `<span class="warn">当前不在任何打卡时段窗口，无法打卡</span>`;
+      else tip.innerHTML = `<span class="warn">ขณะนี้ไม่อยู่ช่วงลงเวลาใดๆ ห้ามลงเวลา</span>`;
+      return;
     }
-  }else if(step === 3){
-    if(dayData.t3){
-      hasExist = true;
-      tipTextZh = "今日晚打卡已完成，不可重复打卡";
-      tipTextTh = "ลงเวลาเย็นของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-    }else{
-      dayData.t3 = timeStr;
-      tipTextZh = `晚打卡成功 ${timeStr}`;
-      tipTextTh = `ลงเวลาเย็นสำเร็จ ${timeStr}`;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}`;
+    const timeStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    let dayData = clockRecord.find(i=>i.user===currentUser && i.date===dateStr);
+    if(!dayData){
+      dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};
+      clockRecord.push(dayData);
     }
-  }else if(step === 4){
-    if(dayData.off){
-      hasExist = true;
-      tipTextZh = "今日下班打卡已完成，不可重复打卡";
-      tipTextTh = "ลงเวลาเลิกงานของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-    }else{
-      dayData.off = timeStr;
-      if(hour >= 21 && now.getMinutes() > 30){
-        tipTextZh = `加班签退完成 ${timeStr}`;
-        tipTextTh = `ลงเวลาโอทีสำเร็จ ${timeStr}`;
+    let hasExist = false;
+    let tipZh = "", tipTh = "";
+    if(step === 1){
+      if(dayData.t1){
+        hasExist = true;
+        tipZh = "今日早打卡已完成，不可重复打卡";
+        tipTh = "ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
       }else{
-        tipTextZh = `正常下班签退完成 ${timeStr}`;
-        tipTextTh = `ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;
+        dayData.t1 = timeStr;
+        tipZh = `早打卡成功 ${timeStr}`;
+        tipTh = `ลงเวลาเช้าสำเร็จ ${timeStr}`;
+      }
+    }else if(step === 2){
+      if(dayData.t2){
+        hasExist = true;
+        tipZh = "今日中打卡已完成，不可重复打卡";
+        tipTh = "ลงเวลากลางวันของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+      }else{
+        dayData.t2 = timeStr;
+        tipZh = `中打卡成功 ${timeStr}`;
+        tipTh = `ลงเวลากลางวันสำเร็จ ${timeStr}`;
+      }
+    }else if(step === 3){
+      if(dayData.t3){
+        hasExist = true;
+        tipZh = "今日晚打卡已完成，不可重复打卡";
+        tipTh = "ลงเวลาเย็นของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+      }else{
+        dayData.t3 = timeStr;
+        tipZh = `晚打卡成功 ${timeStr}`;
+        tipTh = `ลงเวลาเย็นสำเร็จ ${timeStr}`;
+      }
+    }else if(step === 4){
+      if(dayData.off){
+        hasExist = true;
+        tipZh = "今日下班打卡已完成，不可重复打卡";
+        tipTh = "ลงเวลาเลิกงานของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+      }else{
+        dayData.off = timeStr;
+        if(now.getHours() >= 21 && now.getMinutes() > 30){
+          tipZh = `加班签退完成 ${timeStr}`;
+          tipTh = `ลงเวลาโอทีสำเร็จ ${timeStr}`;
+        }else{
+          tipZh = `正常下班签退完成 ${timeStr}`;
+          tipTh = `ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;
+        }
       }
     }
-  }
-
-  if(hasExist){
-    tip.innerHTML = `<span class="warn"><span class="zh">${tipTextZh}</span><span class="th">${tipTextTh}</span></span>`;
-    return;
-  }
-
-  tip.innerHTML = `<span class="zh">${tipTextZh}</span><span class="th">${tipTextTh}</span> ${isLate(timeStr,step===1?11:step===2?16:18)}`;
-  saveClockData();
-  renderRecord();
+    if(hasExist){
+      tip.innerHTML = `<span class="warn"><span class="zh">${tipZh}</span><span class="th">${tipTh}</span></span>`;
+      return;
+    }
+    saveClockData();
+    renderRecord();
+    // 上传到云端
+    await uploadToCloud(currentUser, dateStr);
+    tip.innerHTML = `<span class="zh">${tipZh}</span><span class="th">${tipTh}</span> ${isLate(timeStr, step===1?11:step===2?16:18)}`;
+  },err=>{
+    const lang = localStorage.getItem("siteLang") || "zh";
+    if(lang === "zh") tip.innerHTML = `<span class="warn">获取定位失败，请开启定位权限</span>`;
+    else tip.innerHTML = `<span class="warn">ไม่สามารถรับตำแหน่งได้ กรุณาเปิดสิทธิ์ตำแหน่ง</span>`;
+  });
 }
-// 保存数据
-function saveClockData(){localStorage.setItem("clockData",JSON.stringify(clockRecord));clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];}
-// 员工个人记录渲染（双语，缺卡显示缺卡）
+
+// 渲染个人打卡记录
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
-  const myData = clockRecord.filter(i=>i.user===currentUser).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const myData = clockRecord.filter(i=>i.user === currentUser).sort((a,b)=>new Date(b.date) - new Date(a.date));
   const lang = localStorage.getItem("siteLang") || "zh";
+  const missZh = "<span class='miss-clock'>缺卡</span>";
+  const missTh = "<span class='miss-clock'>ขาดลงเวลา</span>";
   myData.forEach(item=>{
     let absentText = "";
-    if(item.absent==="full"){
-      absentText = `<span class='absent-full'><span class="zh">全天旷工</span><span class="th">ขาดงานทั้งวัน</span></span>`;
-    }
-    if(item.absent==="half"){
-      absentText = `<span class='absent-half'><span class="zh">半日旷工</span><span class="th">ขาดงานครึ่งวัน</span></span>`;
-    }
-    let normalText = `<span class="zh">正常出勤</span><span class="th">มาทำงานปกติ</span>`;
-    // 缺卡占位文字
-    const missZh = "<span class='miss-clock'>缺卡</span>";
-    const missTh = "<span class='miss-clock'>ขาดลงเวลา</span>";
+    if(item.absent === "full") absentText = `<span class='absent-full'><span class="zh">全天旷工</span><span class="th">ขาดงานทั้งวัน</span></span>`;
+    if(item.absent === "half") absentText = `<span class='absent-half'><span class="zh">半日旷工</span><span class="th">ขาดงานครึ่งวัน</span></span>`;
+    const normalText = `<span class="zh">正常出勤</span><span class="th">มาทำงานปกติ</span>`;
     const t1Show = item.t1 ? `${item.t1} ${isLate(item.t1,11)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
     const t2Show = item.t2 ? `${item.t2} ${isLate(item.t2,16)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
     const t3Show = item.t3 ? `${item.t3} ${isLate(item.t3,18)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
     const offShow = item.off || "-";
-    // 审核文字转换
-    let auditText = "";
-    if(item.audit === "待审核") auditText = lang==="zh"?"待审核":"รอตรวจสอบ";
-    if(item.audit === "已通过") auditText = lang==="zh"?"已通过":"ตรวจสอบผ่าน";
-    if(item.audit === "已驳回") auditText = lang==="zh"?"已驳回":"ปฏิเสธ";
-
     box.innerHTML += `<tr>
       <td>${item.date}</td>
       <td>${t1Show}</td>
@@ -605,159 +359,403 @@ function renderRecord(){
       <td>${t3Show}</td>
       <td>${offShow}</td>
       <td>${absentText||normalText}</td>
-      <td>${auditText}</td>
+      <td>${lang==="zh"?item.audit:(item.audit==="待审核"?"รอตรวจสอบ":item.audit==="已通过"?"ผ่านการตรวจ":"ปฏิเสธ")}</td>
     </tr>`;
   })
 }
-// 保存管理员新增考勤（管理员不受时段限制）
+
+// ===================== 管理员新增记录（已同步云端） =====================
 function saveAddRecord(){
-  const emp = document.getElementById("addEmp").value;
-  let dStr = document.getElementById("addDate").value.replace("-","/").replace("-","/");
+  const emp = document.getElementById("addEmp").value.trim();
+  const date = document.getElementById("addDate").value.trim();
   const t1 = document.getElementById("addT1").value.trim();
   const t2 = document.getElementById("addT2").value.trim();
   const t3 = document.getElementById("addT3").value.trim();
   const off = document.getElementById("addOff").value.trim();
+  const audit = document.getElementById("addAudit").value;
   const absent = document.getElementById("addAbsent").value;
-  let item = clockRecord.find(x=>x.user===emp && x.date===dStr);
-  if(!item){
-    item = {user:emp,date:dStr,t1:t1,t2:t2,t3:t3,off:off,audit:"待审核",absent:absent};
-    clockRecord.push(item);
+  if(!emp || !date){
+    alert("员工与日期不能为空");
+    return;
+  }
+  let target = clockRecord.find(i=>i.user===emp && i.date===date);
+  if(!target){
+    target = {user:emp,date,t1,t2,t3,off,audit,absent};
+    clockRecord.push(target);
   }else{
-    item.t1=t1;item.t2=t2;item.t3=t3;item.off=off;item.absent=absent;
+    target.t1 = t1; target.t2 = t2; target.t3 = t3; target.off = off; target.audit = audit; target.absent = absent;
   }
   saveClockData();
-  closeAddModal();
   renderAdminView();
-  alert("考勤添加完成，管理员操作不受打卡时段限制");
+  // 同步云端
+  uploadToCloud(emp, date);
+  document.getElementById("addModal").style.display = "none";
+  alert("新增考勤保存成功");
 }
-// 管理员修改单条记录（不受时段限制）
+
+// ===================== 管理员修改记录（已同步云端） =====================
 function editRecord(index){
-  const row = clockRecord[index];
-  row.t1 = document.getElementById(`t1_${index}`).value.trim();
-  row.t2 = document.getElementById(`t2_${index}`).value.trim();
-  row.t3 = document.getElementById(`t3_${index}`).value.trim();
-  row.off = document.getElementById(`off_${index}`).value.trim();
-  row.audit = document.getElementById(`audit_${index}`).value;
-  row.absent = document.getElementById(`absent_${index}`).value;
+  const item = clockRecord[index];
+  const newT1 = document.getElementById("editT1").value.trim();
+  const newT2 = document.getElementById("editT2").value.trim();
+  const newT3 = document.getElementById("editT3").value.trim();
+  const newOff = document.getElementById("editOff").value.trim();
+  const newAudit = document.getElementById("editAudit").value;
+  const newAbsent = document.getElementById("editAbsent").value;
+  item.t1 = newT1;
+  item.t2 = newT2;
+  item.t3 = newT3;
+  item.off = newOff;
+  item.audit = newAudit;
+  item.absent = newAbsent;
   saveClockData();
   renderAdminView();
-  alert("修改已保存，员工页面同步更新");
+  // 同步云端
+  uploadToCloud(item.user, item.date);
+  document.getElementById("editModal").style.display = "none";
+  alert("修改已保存，全局同步");
 }
-// 删除记录
+
+// ===================== 管理员删除记录（同步云端删除） =====================
 function delRecord(index){
   if(confirm("确认删除该员工当日全部打卡记录？")){
+    const item = clockRecord[index];
+    // 先删云端
+    deleteCloudRecord(item.user, item.date);
+    // 再删本地
     clockRecord.splice(index,1);
     saveClockData();
     renderAdminView();
   }
 }
-// 渲染管理员视图切换（后台纯中文无需翻译）
+
+// 渲染管理员后台
 function renderAdminView(){
-  const week = getThisWeekRange();
-  if(adminViewType==="user"){
-    let wrap = document.getElementById("userWrap");
-    wrap.innerHTML = "";
-    empList.forEach(emp=>{
-      const list = clockRecord.filter(x=>x.user===emp && x.date>=week.start && x.date<=week.end);
-      let totalLate = 0;
-      list.forEach(i=>totalLate += countLateItem(i));
-      let fullAttend = totalLate===0 && list.length>0;
-      let html = `<div class="stat-block"><h4>${emp} ${fullAttend?"<span class='full-attend'>本周全勤</span>":""} 本周迟到总次数：${totalLate}</h4>`;
-      html += `<table><thead><tr><th>日期</th><th>早</th><th>中</th><th>晚</th><th>下班</th><th>旷工标记</th><th>审核</th><th>操作</th></tr></thead><tbody>`;
-      list.forEach((item,idx)=>{
-        const realIdx = clockRecord.findIndex(x=>x.user===emp&&x.date===item.date);
-        let absSel = `<select class="edit-select" id="absent_${realIdx}">
-          <option value="" ${item.absent==""?"selected":""}>无</option>
-          <option value="full" ${item.absent=="full"?"selected":""}>全天旷工</option>
-          <option value="half" ${item.absent=="half"?"selected":""}>半日旷工</option>
-        </select>`;
-        html += `<tr>
-          <td>${item.date}</td>
-          <td><input class="edit-input" value="${item.t1}" id="t1_${realIdx}">${isLate(item.t1,11)}</td>
-          <td><input class="edit-input" value="${item.t2}" id="t2_${realIdx}">${isLate(item.t2,16)}</td>
-          <td><input class="edit-input" value="${item.t3}" id="t3_${realIdx}">${isLate(item.t3,18)}</td>
-          <td><input class="edit-input" value="${item.off}" id="off_${realIdx}"></td>
-          <td>${absSel}</td>
-          <td>
-            <select class="edit-select" id="audit_${realIdx}">
-              <option value="待审核" ${item.audit=="待审核"?"selected":""}>待审核</option>
-              <option value="已通过" ${item.audit=="已通过"?"selected":""}>已通过</option>
-              <option value="已驳回" ${item.audit=="已驳回"?"selected":""}>已驳回</option>
-            </select>
-          </td>
-          <td>
-            <button class="btn-save" onclick="editRecord(${realIdx})">保存</button>
-            <button class="btn-del" onclick="delRecord(${realIdx})">删除</button>
-          </td>
-        </tr>`;
-      })
-      html += `</tbody></table></div>`;
-      wrap.innerHTML += html;
-    })
-  }else{
-    let wrap = document.getElementById("dateWrap");
-    wrap.innerHTML = `<div class="stat-block"><h4>本周范围：${week.start} ~ ${week.end}</h4>`;
-    let weekData = clockRecord.filter(x=>x.date>=week.start&&x.date<=week.end);
-    let allLateCnt = 0;
-    weekData.forEach(i=>allLateCnt+=countLateItem(i));
-    wrap.innerHTML += `<p>本周全员迟到总次数：${allLateCnt}</p></div>`;
-    // 按日期分组
-    const group = {};
-    weekData.forEach(item=>{
-      if(!group[item.date])group[item.date]=[];
-      group[item.date].push(item);
-    })
-    Object.keys(group).sort((a,b)=>new Date(a)-new Date(b)).forEach(d=>{
-      wrap.innerHTML += `<div class="stat-block"><h4>日期：${d}</h4><table><thead><tr><th>员工</th><th>早</th><th>中</th><th>晚</th><th>下班</th><th>旷工</th><th>审核</th><th>操作</th></tr></thead><tbody>`;
-      group[d].forEach(item=>{
-        const realIdx = clockRecord.findIndex(x=>x.user===item.user&&x.date===item.date);
-        let absSel = `<select class="edit-select" id="absent_${realIdx}">
-          <option value="" ${item.absent==""?"selected":""}>无</option>
-          <option value="full" ${item.absent=="full"?"selected":""}>全天旷工</option>
-          <option value="half" ${item.absent=="half"?"selected":""}>半日旷工</option>
-        </select>`;
-        wrap.innerHTML += `<tr>
-          <td>${item.user}</td>
-          <td><input class="edit-input" value="${item.t1}" id="t1_${realIdx}">${isLate(item.t1,11)}</td>
-          <td><input class="edit-input" value="${item.t2}" id="t2_${realIdx}">${isLate(item.t2,16)}</td>
-          <td><input class="edit-input" value="${item.t3}" id="t3_${realIdx}">${isLate(item.t3,18)}</td>
-          <td><input class="edit-input" value="${item.off}" id="off_${realIdx}"></td>
-          <td>${absSel}</td>
-          <td>
-            <select class="edit-select" id="audit_${realIdx}">
-              <option value="待审核" ${item.audit=="待审核"?"selected":""}>待审核</option>
-              <option value="已通过" ${item.audit=="已通过"?"selected":""}>已通过</option>
-              <option value="已驳回" ${item.audit=="已驳回"?"selected":""}>已驳回</option>
-            </select>
-          </td>
-          <td>
-            <button class="btn-save" onclick="editRecord(${realIdx})">保存</button>
-            <button class="btn-del" onclick="delRecord(${realIdx})">删除</button>
-          </td>
-        </tr>`;
-      })
-      wrap.innerHTML += `</tbody></table></div>`;
-    })
-  }
+  const box = document.getElementById("adminList");
+  box.innerHTML = "";
+  let list = [...clockRecord];
+  if(adminViewType === "user") list.sort((a,b)=>a.user.localeCompare(b.user) || new Date(b.date)-new Date(a.date));
+  else list.sort((a,b)=>new Date(b.date)-new Date(a.date) || a.user.localeCompare(b.user));
+  list.forEach((item,idx)=>{
+    const lateCnt = countLate(item);
+    box.innerHTML += `<tr data-idx="${idx}">
+      <td>${item.user}</td>
+      <td>${item.date}</td>
+      <td>${item.t1||"-"} ${isLate(item.t1,11)}</td>
+      <td>${item.t2||"-"} ${isLate(item.t2,16)}</td>
+      <td>${item.t3||"-"} ${isLate(item.t3,18)}</td>
+      <td>${item.off||"-"}</td>
+      <td>${item.audit}</td>
+      <td>${item.absent||"-"}</td>
+      <td>${lateCnt}</td>
+      <td>
+        <button class="btn-save" onclick="openEditModal(${idx})"><span class="zh">编辑</span><span class="th">แก้ไข</span></button>
+        <button class="btn-del" onclick="delRecord(${idx})"><span class="zh">删除</span><span class="th">ลบ</span></button>
+      </td>
+    </tr>`;
+  })
 }
-// 监听存储同步
-window.addEventListener("storage", function(){
-  clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
-  if(!document.getElementById("mainPage").classList.contains("hide")) renderRecord();
-  if(!document.getElementById("adminPage").classList.contains("hide")) renderAdminView();
-})
-// 页面初始化
-window.onload = function(){
+
+// 弹窗控制
+function openAddModal(){
+  document.getElementById("addEmp").value = "";
+  document.getElementById("addDate").value = "";
+  document.getElementById("addT1").value = "";
+  document.getElementById("addT2").value = "";
+  document.getElementById("addT3").value = "";
+  document.getElementById("addOff").value = "";
+  document.getElementById("addAudit").value = "待审核";
+  document.getElementById("addAbsent").value = "";
+  document.getElementById("addModal").style.display = "flex";
+}
+function closeAddModal(){
+  document.getElementById("addModal").style.display = "none";
+}
+let editTargetIndex = 0;
+function openEditModal(idx){
+  editTargetIndex = idx;
+  const item = clockRecord[idx];
+  document.getElementById("editT1").value = item.t1;
+  document.getElementById("editT2").value = item.t2;
+  document.getElementById("editT3").value = item.t3;
+  document.getElementById("editOff").value = item.off;
+  document.getElementById("editAudit").value = item.audit;
+  document.getElementById("editAbsent").value = item.absent;
+  document.getElementById("editModal").style.display = "flex";
+}
+function closeEditModal(){
+  document.getElementById("editModal").style.display = "none";
+}
+function switchAdminTab(type){
+  adminViewType = type;
+  document.querySelectorAll(".admin-tab-switch button").forEach(b=>b.classList.remove("active"));
+  event.target.classList.add("active");
+  renderAdminView();
+}
+
+// 页面切换
+function switchTab(pageId){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
+  document.getElementById(pageId).classList.add("show");
+}
+// 登录
+function doLogin(){
+  const user = document.getElementById("loginUser").value.trim();
+  const pwd = document.getElementById("loginPwd").value.trim();
+  const lang = localStorage.getItem("siteLang") || "zh";
+  if(!user || !pwd){
+    alert(lang==="zh"?"账号密码不能为空":"ชื่อบัญชีและรหัสผ่านห้ามว่าง");
+    return;
+  }
+  if(!userList[user] || userList[user].pwd !== pwd){
+    if(lang === "zh") alert("账号或密码错误");
+    else alert("ชื่อบัญชีหรือรหัสผ่านผิด");
+    return;
+  }
+  currentUser = user;
+  localStorage.setItem("loginUser", user);
+  document.getElementById("loginWrap").classList.add("hide");
+  document.getElementById("mainWrap").classList.remove("hide");
+  switchTab("clockPage");
+  renderRecord();
+  if(userList[user].role === "admin") renderAdminView();
+}
+// 退出登录
+function logout(){
+  currentUser = null;
+  localStorage.removeItem("loginUser");
+  document.getElementById("loginWrap").classList.remove("hide");
+  document.getElementById("mainWrap").classList.add("hide");
+}
+
+// ===================== 页面初始化（自动拉取云端全部数据） =====================
+window.onload = async function(){
   loadLangSetting();
+  // 从云端拉取所有打卡记录，覆盖本地缓存
+  const { data: cloudData } = await supabase.from('clock_records').select('*');
+  clockRecord = cloudData.map(item => ({
+    user: item.user_name,
+    date: item.record_date,
+    t1: item.t1,
+    t2: item.t2,
+    t3: item.t3,
+    off: item.off,
+    audit: item.audit,
+    absent: item.absent
+  }));
+  saveClockData();
+
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
     currentUser = cacheUser;
-    document.getElementById("loginPage").classList.add("hide");
-    document.getElementById("mainPage").classList.remove("hide");
-    getLocation();
+    document.getElementById("loginWrap").classList.add("hide");
+    document.getElementById("mainWrap").classList.remove("hide");
     renderRecord();
+    if(userList[currentUser].role === "admin") renderAdminView();
   }
 }
 </script>
+</head>
+<body class="lang-zh">
+<!-- 登录区域 -->
+<div id="loginWrap" class="login-wrap">
+  <div class="login-card">
+    <h2>
+      <span class="zh">员工考勤登录</span>
+      <span class="th">เข้าสู่ระบบลงเวลา</span>
+    </h2>
+    <div class="input-box">
+      <input type="text" id="loginUser" placeholder="<span class='zh'>输入账号 FANG/AMP/admin</span><span class='th'>กรอกชื่อบัญชี</span>">
+    </div>
+    <div class="input-box">
+      <input type="password" id="loginPwd" placeholder="<span class='zh'>输入密码 123456</span><span class='th'>กรอกรหัสผ่าน</span>">
+    </div>
+    <button class="btn" onclick="doLogin()">
+      <span class="zh">登录</span>
+      <span class="th">เข้าสู่ระบบ</span>
+    </button>
+  </div>
+</div>
+
+<!-- 主界面区域 -->
+<div id="mainWrap" class="hide">
+  <div class="header">
+    <h1>
+      <span class="zh">考勤打卡系统</span>
+      <span class="th">ระบบลงเวลา</span>
+    </h1>
+    <div class="header-buttons">
+      <button class="lang-btn" onclick="toggleLang()">
+        <span class="zh">ภาษาไทย</span>
+        <span class="th">中文</span>
+      </button>
+      <button class="admin-enter-btn" onclick="switchTab('adminPage')">
+        <span class="zh">管理员后台</span>
+        <span class="th">แผงผู้ดูแล</span>
+      </button>
+      <button class="logout-btn" onclick="logout()">
+        <span class="zh">退出</span>
+        <span class="th">ออกจากระบบ</span>
+      </button>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('clockPage')">
+      <span class="zh">打卡</span>
+      <span class="th">ลงเวลา</span>
+    </div>
+    <div class="tab" onclick="switchTab('recordPage')">
+      <span class="zh">我的记录</span>
+      <span class="th">ประวัติของฉัน</span>
+    </div>
+  </div>
+
+  <!-- 打卡页面 -->
+  <div id="clockPage" class="page show">
+    <div class="clock-box">
+      <div id="nowTime" class="time-text">00:00:00</div>
+      <div class="location-tip" id="locTip">
+        <span class="zh">正在获取定位...</span>
+        <span class="th">กำลังรับตำแหน่ง...</span>
+      </div>
+      <div class="tip-text">
+        <span class="zh">
+        打卡时段规则：<br>
+        早 10:30~11:30｜中15:30~16:30｜晚17:30~18:30｜下班21:00~23:00<br>
+        任意时段窗口均可直接打卡，无需按顺序；未打卡时段记为缺卡缺勤
+        </span>
+        <span class="th">
+        กฎช่วงเวลาลงเวลา:<br>
+        เช้า 10:30~11:30 | กลางวัน 15:30~16:30 | เย็น17:30~18:30 | เลิกงาน21:00~23:00<br>
+        สามารถลงเวลาช่วงไหนก็ได้ ไม่ต้องตามลำดับ ช่วงไหนไม่ลงจะขาดลงเวลา
+        </span>
+      </div>
+      <button class="clock-submit" id="clockBtn">
+        <span class="zh">立即打卡</span>
+        <span class="th">ลงเวลาตอนนี้</span>
+      </button>
+      <div class="tip-text" id="clockTip"></div>
+    </div>
+  </div>
+
+  <!-- 个人记录页 -->
+  <div id="recordPage" class="page">
+    <h3>
+      <span class="zh">我的全部打卡记录</span>
+      <span class="th">ประวัติการลงเวลาทั้งหมดของฉัน</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th><span class="zh">日期</span><span class="th">วันที่</span></th>
+          <th><span class="zh">早打卡</span><span class="th">ลงเช้า</span></th>
+          <th><span class="zh">中打卡</span><span class="th">ลงกลางวัน</span></th>
+          <th><span class="zh">晚打卡</span><span class="th">ลงเย็น</span></th>
+          <th><span class="zh">下班</span><span class="th">เลิกงาน</span></th>
+          <th><span class="zh">出勤状态</span><span class="th">สถานะ</span></th>
+          <th><span class="zh">审核</span><span class="th">ตรวจสอบ</span></th>
+        </tr>
+      </thead>
+      <tbody id="recordList"></tbody>
+    </table>
+  </div>
+
+  <!-- 管理员后台页 -->
+  <div id="adminPage" class="page">
+    <h3>
+      <span class="zh">全员考勤管理后台</span>
+      <span class="th">แผงจัดการประวัติทุกคน</span>
+    </h3>
+    <div class="admin-tab-switch">
+      <button class="active" onclick="switchAdminTab('user')">
+        <span class="zh">按员工排序</span>
+        <span class="th">เรียงตามพนักงาน</span>
+      </button>
+      <button onclick="switchAdminTab('date')">
+        <span class="zh">按日期排序</span>
+        <span class="th">เรียงตามวันที่</span>
+      </button>
+    </div>
+    <button class="btn-add" onclick="openAddModal()">
+      <span class="zh">手动新增考勤</span>
+      <span class="th">เพิ่มประวัติเอง</span>
+    </button>
+    <table>
+      <thead>
+        <tr>
+          <th><span class="zh">员工</span><span class="th">พนักงาน</span></th>
+          <th><span class="zh">日期</span><span class="th">วันที่</span></th>
+          <th><span class="zh">早</span><span class="th">เช้า</span></th>
+          <th><span class="zh">中</span><span class="th">กลางวัน</span></th>
+          <th><span class="zh">晚</span><span class="th">เย็น</span></th>
+          <th><span class="zh">下班</span><span class="th">เลิกงาน</span></th>
+          <th><span class="zh">审核</span><span class="th">ตรวจสอบ</span></th>
+          <th><span class="zh">旷工</span><span class="th">ขาดงาน</span></th>
+          <th><span class="zh">迟到次数</span><span class="th">จำนวนสาย</span></th>
+          <th><span class="zh">操作</span><span class="th">ดำเนินการ</span></th>
+        </tr>
+      </thead>
+      <tbody id="adminList"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 新增考勤弹窗 -->
+<div class="modal-mask" id="addModal">
+  <div class="modal-box">
+    <h3>
+      <span class="zh">手动新增考勤记录</span>
+      <span class="th">เพิ่มประวัติลงเวลา</span>
+    </h3>
+    <input class="modal-input" id="addEmp" placeholder="<span class='zh'>员工账号 FANG/AMP</span><span class='th'>ชื่อพนักงาน</span>">
+    <input class="modal-input" id="addDate" placeholder="<span class='zh'>日期 2026/06/30</span><span class='th'>วันที่</span>">
+    <input class="modal-input" id="addT1" placeholder="<span class='zh'>早打卡 留空=无</span><span class='th'>เวลาเช้า ปล่อยว่าง=ไม่มี</span>">
+    <input class="modal-input" id="addT2" placeholder="<span class='zh'>中打卡 留空=无</span><span class='th'>เวลากลางวัน ปล่อยว่าง=ไม่มี</span>">
+    <input class="modal-input" id="addT3" placeholder="<span class='zh'>晚打卡 留空=无</span><span class='th'>เวลาเย็น ปล่อยว่าง=ไม่มี</span>">
+    <input class="modal-input" id="addOff" placeholder="<span class='zh'>下班打卡 留空=无</span><span class='th'>เวลาเลิกงาน ปล่อยว่าง=ไม่มี</span>">
+    <select class="modal-select" id="addAudit">
+      <option value="待审核"><span class="zh">待审核</span><span class="th">รอตรวจสอบ</span></option>
+      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่าน</span></option>
+      <option value="已驳回"><span class="zh">已驳回</span><span class="th">ปฏิเสธ</span></option>
+    </select>
+    <select class="modal-select" id="addAbsent">
+      <option value=""><span class="zh">无旷工</span><span class="th">ไม่ขาดงาน</span></option>
+      <option value="full"><span class="zh">全天旷工</span><span class="th">ขาดทั้งวัน</span></option>
+      <option value="half"><span class="zh">半日旷工</span><span class="th">ขาดครึ่งวัน</span></option>
+    </select>
+    <div class="modal-btn-group">
+      <button class="modal-confirm" onclick="saveAddRecord()"><span class="zh">保存</span><span class="th">บันทึก</span></button>
+      <button class="modal-cancel" onclick="closeAddModal()"><span class="zh">取消</span><span class="th">ยกเลิก</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑考勤弹窗 -->
+<div class="modal-mask" id="editModal">
+  <div class="modal-box">
+    <h3>
+      <span class="zh">修改考勤记录</span>
+      <span class="th">แก้ไขประวัติลงเวลา</span>
+    </h3>
+    <input class="modal-input" id="editT1" placeholder="<span class='zh'>早打卡</span><span class='th'>เวลาเช้า</span>">
+    <input class="modal-input" id="editT2" placeholder="<span class='zh'>中打卡</span><span class='th'>เวลากลางวัน</span>">
+    <input class="modal-input" id="editT3" placeholder="<span class='zh'>晚打卡</span><span class='th'>เวลาเย็น</span>">
+    <input class="modal-input" id="editOff" placeholder="<span class='zh'>下班打卡</span><span class='th'>เวลาเลิกงาน</span>">
+    <select class="modal-select" id="editAudit">
+      <option value="待审核"><span class="zh">待审核</span><span class="th">รอตรวจสอบ</span></option>
+      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่าน</span></option>
+      <option value="已驳回"><span class="zh">已驳回</span><span class="th">ปฏิเสธ</span></option>
+    </select>
+    <select class="modal-select" id="editAbsent">
+      <option value=""><span class="zh">无旷工</span><span class="th">ไม่ขาดงาน</span></option>
+      <option value="full"><span class="zh">全天旷工</span><span class="th">ขาดทั้งวัน</span></option>
+      <option value="half"><span class="zh">半日旷工</span><span class="th">ขาดครึ่งวัน</span></option>
+    </select>
+    <div class="modal-btn-group">
+      <button class="modal-confirm" onclick="editRecord(editTargetIndex)"><span class="zh">保存修改</span><span class="th">บันทึกแก้ไข</span></button>
+      <button class="modal-cancel" onclick="closeEditModal()"><span class="zh">取消</span><span class="th">ยกเลิก</span></button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
