@@ -80,7 +80,7 @@ th{background:#f7f8fa;}
 .absent-full{color:#900;font-weight:bold;}
 .absent-half{color:#c66a00;font-weight:bold;}
 </style>
-<!-- Supabase 云数据库SDK + 你的密钥 -->
+<!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = "https://ngtjpezuoppsqxttzypx.supabase.co";
@@ -88,54 +88,85 @@ const SUPABASE_ANON_KEY = "sb_publishable_txzhwyOGKx9GwrWXxfZlcg_qixhykYE";
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===================== 全局通用云端同步函数 =====================
-// 新增/更新单条记录到云端
+// ===================== 全局云端同步函数（带错误捕获） =====================
 async function uploadToCloud(userName, recordDate){
-  const targetItem = clockRecord.find(i => i.user === userName && i.date === recordDate);
-  if(!targetItem) return;
-  const { data } = await supabase
-    .from('clock_records')
-    .select('id')
-    .eq('user_name', userName)
-    .eq('record_date', recordDate);
-  if(data.length > 0){
-    // 更新已有记录
-    await supabase
+  try{
+    const targetItem = clockRecord.find(i => i.user === userName && i.date === recordDate);
+    if(!targetItem) return;
+    const { data } = await supabase
       .from('clock_records')
-      .update({
+      .select('id')
+      .eq('user_name', userName)
+      .eq('record_date', recordDate);
+    if(data.length > 0){
+      await supabase
+        .from('clock_records')
+        .update({
+          t1: targetItem.t1,
+          t2: targetItem.t2,
+          t3: targetItem.t3,
+          off: targetItem.off,
+          absent: targetItem.absent,
+          audit: targetItem.audit
+        })
+        .eq('user_name', userName)
+        .eq('record_date', recordDate);
+    }else{
+      await supabase.from('clock_records').insert([{
+        user_name: userName,
+        record_date: recordDate,
         t1: targetItem.t1,
         t2: targetItem.t2,
         t3: targetItem.t3,
         off: targetItem.off,
         absent: targetItem.absent,
         audit: targetItem.audit
-      })
-      .eq('user_name', userName)
-      .eq('record_date', recordDate);
-  }else{
-    // 插入新记录
-    await supabase.from('clock_records').insert([{
-      user_name: userName,
-      record_date: recordDate,
-      t1: targetItem.t1,
-      t2: targetItem.t2,
-      t3: targetItem.t3,
-      off: targetItem.off,
-      absent: targetItem.absent,
-      audit: targetItem.audit
-    }]);
+      }]);
+    }
+  }catch(e){
+    console.log("云端上传失败，仅本地保存",e);
   }
 }
-// 删除云端单条记录
 async function deleteCloudRecord(userName, recordDate){
-  await supabase
-    .from('clock_records')
-    .delete()
-    .eq('user_name', userName)
-    .eq('record_date', recordDate);
+  try{
+    await supabase
+      .from('clock_records')
+      .delete()
+      .eq('user_name', userName)
+      .eq('record_date', recordDate);
+  }catch(e){
+    console.log("云端删除失败",e);
+  }
+}
+// 页面后台拉取云端数据（不阻塞页面渲染）
+function loadCloudData(){
+  supabase.from('clock_records').select('*')
+  .then(res=>{
+    if(res.error) throw res.error;
+    clockRecord = res.data.map(item => ({
+      user: item.user_name,
+      date: item.record_date,
+      t1: item.t1,
+      t2: item.t2,
+      t3: item.t3,
+      off: item.off,
+      audit: item.audit,
+      absent: item.absent
+    }));
+    saveClockData();
+    // 登录后刷新视图
+    const cacheUser = localStorage.getItem("loginUser");
+    if(cacheUser && userList[cacheUser]){
+      renderRecord();
+      if(userList[cacheUser].role === "admin") renderAdminView();
+    }
+  })
+  .catch(err=>{
+    console.log("云端加载失败，使用本地缓存",err);
+  })
 }
 
-// 双语切换函数
+// 双语切换
 function toggleLang(){
   const body = document.body;
   if(body.classList.contains("lang-zh")){
@@ -148,7 +179,6 @@ function toggleLang(){
     localStorage.setItem("siteLang","zh");
   }
 }
-// 加载本地语言配置
 function loadLangSetting(){
   const saveLang = localStorage.getItem("siteLang") || "zh";
   const body = document.body;
@@ -161,7 +191,7 @@ function loadLangSetting(){
   }
 }
 
-// 配置
+// 基础配置
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
@@ -179,59 +209,40 @@ let currentUser = null;
 let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
 let adminViewType = "user";
 
-// 时分转分钟
-function timeToMin(h,m){
-  return h*60 + m;
-}
-// 获取当前所属打卡时段 1早/2中/3晚/4下班/0不在时段
+function timeToMin(h,m){return h*60 + m;}
 function getCurrentClockStep(){
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();
   const cur = timeToMin(h,m);
-  const m1s = timeToMin(10,30);
-  const m1e = timeToMin(11,30);
-  const m2s = timeToMin(15,30);
-  const m2e = timeToMin(16,30);
-  const m3s = timeToMin(17,30);
-  const m3e = timeToMin(18,30);
-  const m4s = timeToMin(21,0);
-  const m4e = timeToMin(23,0);
+  const m1s = timeToMin(10,30),m1e=timeToMin(11,30);
+  const m2s=timeToMin(15,30),m2e=timeToMin(16,30);
+  const m3s=timeToMin(17,30),m3e=timeToMin(18,30);
+  const m4s=timeToMin(21,0),m4e=timeToMin(23,0);
   if(cur >= m1s && cur <= m1e) return 1;
   if(cur >= m2s && cur <= m2e) return 2;
   if(cur >= m3s && cur <= m3e) return 3;
   if(cur >= m4s && cur <= m4e) return 4;
   return 0;
 }
-// 迟到标记双语
 function isLate(timeStr, limitHour){
   if(!timeStr) return "";
   const h = parseInt(timeStr.split(":")[0]);
-  if(h >= limitHour){
-    return `<span class='late'><span class="zh">迟到</span><span class="th">สาย</span></span>`;
-  }else{
-    return `<span class='normal'><span class="zh">正常</span><span class="th">ปกติ</span></span>`;
-  }
+  return h >= limitHour ? `<span class='late'><span class="zh">迟到</span><span class="th">สาย</span></span>` : `<span class='normal'><span class="zh">正常</span><span class="th">ปกติ</span></span>`;
 }
-// 统计迟到次数
 function countLate(item){
-  let cnt = 0;
+  let cnt=0;
   if(item.t1){const h=parseInt(item.t1.split(":")[0]);if(h>=11)cnt++;}
   if(item.t2){const h=parseInt(item.t2.split(":")[0]);if(h>=16)cnt++;}
   if(item.t3){const h=parseInt(item.t3.split(":")[0]);if(h>=18)cnt++;}
   return cnt;
 }
-// 保存本地缓存
-function saveClockData(){
-  localStorage.setItem("clockData", JSON.stringify(clockRecord));
-}
-// 计算两点距离米
+function saveClockData(){localStorage.setItem("clockData", JSON.stringify(clockRecord));}
 function getDistance(lat1,lng1,lat2,lng2){
   const rad = Math.PI / 180;
   const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
   return 2*6371000*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-// 更新页面时间
 function updateClock(){
   const d = new Date();
   const h = String(d.getHours()).padStart(2,"0");
@@ -242,25 +253,23 @@ function updateClock(){
 setInterval(updateClock,1000);
 updateClock();
 
-// ===================== 员工打卡按钮点击（已接入云端上传） =====================
-document.getElementById("clockBtn").onclick = async function(){
+// 员工打卡按钮
+document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   const lang = localStorage.getItem("siteLang") || "zh";
   if(!navigator.geolocation){
     tip.innerHTML = `<span class="warn"><span class="zh">浏览器无定位权限，无法打卡</span><span class="th">เบราว์เซอร์ไม่มีสิทธิ์ตำแหน่ง ไม่สามารถลงเวลาได้</span></span>`;
     return;
   }
-  navigator.geolocation.getCurrentPosition(async pos=>{
+  navigator.geolocation.getCurrentPosition(pos=>{
     const dis = getDistance(pos.coords.latitude, pos.coords.longitude, COMPANY_LAT, COMPANY_LNG);
     if(dis > ALLOW_RANGE){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">超出打卡范围，禁止打卡</span>`;
-      else tip.innerHTML = `<span class="warn">อยู่นอกขอบเขตสถานที่ทำงาน ห้ามลงเวลา</span>`;
+      tip.innerHTML = `<span class="warn"><span class="zh">超出打卡范围，禁止打卡</span><span class="th">อยู่นอกขอบเขตสถานที่ทำงาน ห้ามลงเวลา</span></span>`;
       return;
     }
     const step = getCurrentClockStep();
     if(step === 0){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">当前不在任何打卡时段窗口，无法打卡</span>`;
-      else tip.innerHTML = `<span class="warn">ขณะนี้ไม่อยู่ช่วงลงเวลาใดๆ ห้ามลงเวลา</span>`;
+      tip.innerHTML = `<span class="warn"><span class="zh">当前不在任何打卡时段窗口，无法打卡</span><span class="th">ขณะนี้ไม่อยู่ช่วงลงเวลาใดๆ ห้ามลงเวลา</span></span>`;
       return;
     }
     const now = new Date();
@@ -271,52 +280,21 @@ document.getElementById("clockBtn").onclick = async function(){
       dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};
       clockRecord.push(dayData);
     }
-    let hasExist = false;
-    let tipZh = "", tipTh = "";
+    let hasExist = false,tipZh="",tipTh="";
     if(step === 1){
-      if(dayData.t1){
-        hasExist = true;
-        tipZh = "今日早打卡已完成，不可重复打卡";
-        tipTh = "ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-      }else{
-        dayData.t1 = timeStr;
-        tipZh = `早打卡成功 ${timeStr}`;
-        tipTh = `ลงเวลาเช้าสำเร็จ ${timeStr}`;
-      }
+      if(dayData.t1){hasExist=true;tipZh="今日早打卡已完成，不可重复打卡";tipTh="ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";}
+      else {dayData.t1=timeStr;tipZh=`早打卡成功 ${timeStr}`;tipTh=`ลงเวลาเช้าสำเร็จ ${timeStr}`;}
     }else if(step === 2){
-      if(dayData.t2){
-        hasExist = true;
-        tipZh = "今日中打卡已完成，不可重复打卡";
-        tipTh = "ลงเวลากลางวันของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-      }else{
-        dayData.t2 = timeStr;
-        tipZh = `中打卡成功 ${timeStr}`;
-        tipTh = `ลงเวลากลางวันสำเร็จ ${timeStr}`;
-      }
+      if(dayData.t2){hasExist=true;tipZh="今日中打卡已完成，不可重复打卡";tipTh="ลงเวลากลางวันของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";}
+      else {dayData.t2=timeStr;tipZh=`中打卡成功 ${timeStr}`;tipTh=`ลงเวลากลางวันสำเร็จ ${timeStr}`;}
     }else if(step === 3){
-      if(dayData.t3){
-        hasExist = true;
-        tipZh = "今日晚打卡已完成，不可重复打卡";
-        tipTh = "ลงเวลาเย็นของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-      }else{
-        dayData.t3 = timeStr;
-        tipZh = `晚打卡成功 ${timeStr}`;
-        tipTh = `ลงเวลาเย็นสำเร็จ ${timeStr}`;
-      }
+      if(dayData.t3){hasExist=true;tipZh="今日晚打卡已完成，不可重复打卡";tipTh="ลงเวลาเย็นของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";}
+      else {dayData.t3=timeStr;tipZh=`晚打卡成功 ${timeStr}`;tipTh=`ลงเวลาเย็นสำเร็จ ${timeStr}`;}
     }else if(step === 4){
-      if(dayData.off){
-        hasExist = true;
-        tipZh = "今日下班打卡已完成，不可重复打卡";
-        tipTh = "ลงเวลาเลิกงานของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
-      }else{
-        dayData.off = timeStr;
-        if(now.getHours() >= 21 && now.getMinutes() > 30){
-          tipZh = `加班签退完成 ${timeStr}`;
-          tipTh = `ลงเวลาโอทีสำเร็จ ${timeStr}`;
-        }else{
-          tipZh = `正常下班签退完成 ${timeStr}`;
-          tipTh = `ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;
-        }
+      if(dayData.off){hasExist=true;tipZh="今日下班打卡已完成，不可重复打卡";tipTh="ลงเวลาเลิกงานของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";}
+      else {dayData.off=timeStr;
+        if(now.getHours() >= 21 && now.getMinutes() > 30){tipZh=`加班签退完成 ${timeStr}`;tipTh=`ลงเวลาโอทีสำเร็จ ${timeStr}`;}
+        else {tipZh=`正常下班签退完成 ${timeStr}`;tipTh=`ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;}
       }
     }
     if(hasExist){
@@ -325,22 +303,19 @@ document.getElementById("clockBtn").onclick = async function(){
     }
     saveClockData();
     renderRecord();
-    // 上传到云端
-    await uploadToCloud(currentUser, dateStr);
+    uploadToCloud(currentUser, dateStr);
     tip.innerHTML = `<span class="zh">${tipZh}</span><span class="th">${tipTh}</span> ${isLate(timeStr, step===1?11:step===2?16:18)}`;
   },err=>{
     const lang = localStorage.getItem("siteLang") || "zh";
-    if(lang === "zh") tip.innerHTML = `<span class="warn">获取定位失败，请开启定位权限</span>`;
-    else tip.innerHTML = `<span class="warn">ไม่สามารถรับตำแหน่งได้ กรุณาเปิดสิทธิ์ตำแหน่ง</span>`;
+    tip.innerHTML = `<span class="warn"><span class="zh">获取定位失败，请开启定位权限</span><span class="th">ไม่สามารถรับตำแหน่งได้ กรุณาเปิดสิทธิ์ตำแหน่ง</span></span>`;
   });
 }
 
-// 渲染个人打卡记录
+// 渲染个人记录
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
   const myData = clockRecord.filter(i=>i.user === currentUser).sort((a,b)=>new Date(b.date) - new Date(a.date));
-  const lang = localStorage.getItem("siteLang") || "zh";
   const missZh = "<span class='miss-clock'>缺卡</span>";
   const missTh = "<span class='miss-clock'>ขาดลงเวลา</span>";
   myData.forEach(item=>{
@@ -359,12 +334,12 @@ function renderRecord(){
       <td>${t3Show}</td>
       <td>${offShow}</td>
       <td>${absentText||normalText}</td>
-      <td>${lang==="zh"?item.audit:(item.audit==="待审核"?"รอตรวจสอบ":item.audit==="已通过"?"ผ่านการตรวจ":"ปฏิเสธ")}</td>
+      <td>${item.audit==="待审核"?"รอตรวจสอบ":item.audit==="已通过"?"ผ่านการตรวจ":"ปฏิเสธ"}</td>
     </tr>`;
   })
 }
 
-// ===================== 管理员新增记录（已同步云端） =====================
+// 管理员新增
 function saveAddRecord(){
   const emp = document.getElementById("addEmp").value.trim();
   const date = document.getElementById("addDate").value.trim();
@@ -374,10 +349,7 @@ function saveAddRecord(){
   const off = document.getElementById("addOff").value.trim();
   const audit = document.getElementById("addAudit").value;
   const absent = document.getElementById("addAbsent").value;
-  if(!emp || !date){
-    alert("员工与日期不能为空");
-    return;
-  }
+  if(!emp || !date){alert("员工与日期不能为空");return;}
   let target = clockRecord.find(i=>i.user===emp && i.date===date);
   if(!target){
     target = {user:emp,date,t1,t2,t3,off,audit,absent};
@@ -387,13 +359,11 @@ function saveAddRecord(){
   }
   saveClockData();
   renderAdminView();
-  // 同步云端
   uploadToCloud(emp, date);
   document.getElementById("addModal").style.display = "none";
   alert("新增考勤保存成功");
 }
-
-// ===================== 管理员修改记录（已同步云端） =====================
+// 管理员编辑
 function editRecord(index){
   const item = clockRecord[index];
   const newT1 = document.getElementById("editT1").value.trim();
@@ -402,33 +372,23 @@ function editRecord(index){
   const newOff = document.getElementById("editOff").value.trim();
   const newAudit = document.getElementById("editAudit").value;
   const newAbsent = document.getElementById("editAbsent").value;
-  item.t1 = newT1;
-  item.t2 = newT2;
-  item.t3 = newT3;
-  item.off = newOff;
-  item.audit = newAudit;
-  item.absent = newAbsent;
+  item.t1 = newT1; item.t2 = newT2; item.t3 = newT3; item.off = newOff; item.audit = newAudit; item.absent = newAbsent;
   saveClockData();
   renderAdminView();
-  // 同步云端
   uploadToCloud(item.user, item.date);
   document.getElementById("editModal").style.display = "none";
   alert("修改已保存，全局同步");
 }
-
-// ===================== 管理员删除记录（同步云端删除） =====================
+// 管理员删除
 function delRecord(index){
   if(confirm("确认删除该员工当日全部打卡记录？")){
     const item = clockRecord[index];
-    // 先删云端
     deleteCloudRecord(item.user, item.date);
-    // 再删本地
     clockRecord.splice(index,1);
     saveClockData();
     renderAdminView();
   }
 }
-
 // 渲染管理员后台
 function renderAdminView(){
   const box = document.getElementById("adminList");
@@ -455,8 +415,7 @@ function renderAdminView(){
     </tr>`;
   })
 }
-
-// 弹窗控制
+// 弹窗
 function openAddModal(){
   document.getElementById("addEmp").value = "";
   document.getElementById("addDate").value = "";
@@ -468,9 +427,7 @@ function openAddModal(){
   document.getElementById("addAbsent").value = "";
   document.getElementById("addModal").style.display = "flex";
 }
-function closeAddModal(){
-  document.getElementById("addModal").style.display = "none";
-}
+function closeAddModal(){document.getElementById("addModal").style.display = "none";}
 let editTargetIndex = 0;
 function openEditModal(idx){
   editTargetIndex = idx;
@@ -483,35 +440,23 @@ function openEditModal(idx){
   document.getElementById("editAbsent").value = item.absent;
   document.getElementById("editModal").style.display = "flex";
 }
-function closeEditModal(){
-  document.getElementById("editModal").style.display = "none";
-}
+function closeEditModal(){document.getElementById("editModal").style.display = "none";}
 function switchAdminTab(type){
   adminViewType = type;
   document.querySelectorAll(".admin-tab-switch button").forEach(b=>b.classList.remove("active"));
   event.target.classList.add("active");
   renderAdminView();
 }
-
-// 页面切换
 function switchTab(pageId){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
   document.getElementById(pageId).classList.add("show");
 }
-// 登录
 function doLogin(){
   const user = document.getElementById("loginUser").value.trim();
   const pwd = document.getElementById("loginPwd").value.trim();
   const lang = localStorage.getItem("siteLang") || "zh";
-  if(!user || !pwd){
-    alert(lang==="zh"?"账号密码不能为空":"ชื่อบัญชีและรหัสผ่านห้ามว่าง");
-    return;
-  }
-  if(!userList[user] || userList[user].pwd !== pwd){
-    if(lang === "zh") alert("账号或密码错误");
-    else alert("ชื่อบัญชีหรือรหัสผ่านผิด");
-    return;
-  }
+  if(!user || !pwd){alert(lang==="zh"?"账号密码不能为空":"ชื่อบัญชีและรหัสผ่านห้ามว่าง");return;}
+  if(!userList[user] || userList[user].pwd !== pwd){alert(lang === "zh"?"账号或密码错误":"ชื่อบัญชีหรือรหัสผ่านผิด");return;}
   currentUser = user;
   localStorage.setItem("loginUser", user);
   document.getElementById("loginWrap").classList.add("hide");
@@ -520,31 +465,18 @@ function doLogin(){
   renderRecord();
   if(userList[user].role === "admin") renderAdminView();
 }
-// 退出登录
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
   document.getElementById("loginWrap").classList.remove("hide");
   document.getElementById("mainWrap").classList.add("hide");
 }
-
-// ===================== 页面初始化（自动拉取云端全部数据） =====================
-window.onload = async function(){
+// 页面初始化【核心修复：云端拉取异步后台执行，不阻塞登录渲染】
+window.onload = function(){
   loadLangSetting();
-  // 从云端拉取所有打卡记录，覆盖本地缓存
-  const { data: cloudData } = await supabase.from('clock_records').select('*');
-  clockRecord = cloudData.map(item => ({
-    user: item.user_name,
-    date: item.record_date,
-    t1: item.t1,
-    t2: item.t2,
-    t3: item.t3,
-    off: item.off,
-    audit: item.audit,
-    absent: item.absent
-  }));
-  saveClockData();
-
+  // 后台异步拉取云端数据，失败不影响页面
+  loadCloudData();
+  // 优先渲染登录界面，读取本地缓存登录状态
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
     currentUser = cacheUser;
@@ -557,7 +489,6 @@ window.onload = async function(){
 </script>
 </head>
 <body class="lang-zh">
-<!-- 登录区域 -->
 <div id="loginWrap" class="login-wrap">
   <div class="login-card">
     <h2>
@@ -576,8 +507,6 @@ window.onload = async function(){
     </button>
   </div>
 </div>
-
-<!-- 主界面区域 -->
 <div id="mainWrap" class="hide">
   <div class="header">
     <h1>
@@ -609,8 +538,6 @@ window.onload = async function(){
       <span class="th">ประวัติของฉัน</span>
     </div>
   </div>
-
-  <!-- 打卡页面 -->
   <div id="clockPage" class="page show">
     <div class="clock-box">
       <div id="nowTime" class="time-text">00:00:00</div>
@@ -637,8 +564,6 @@ window.onload = async function(){
       <div class="tip-text" id="clockTip"></div>
     </div>
   </div>
-
-  <!-- 个人记录页 -->
   <div id="recordPage" class="page">
     <h3>
       <span class="zh">我的全部打卡记录</span>
@@ -659,8 +584,6 @@ window.onload = async function(){
       <tbody id="recordList"></tbody>
     </table>
   </div>
-
-  <!-- 管理员后台页 -->
   <div id="adminPage" class="page">
     <h3>
       <span class="zh">全员考勤管理后台</span>
@@ -699,8 +622,6 @@ window.onload = async function(){
     </table>
   </div>
 </div>
-
-<!-- 新增考勤弹窗 -->
 <div class="modal-mask" id="addModal">
   <div class="modal-box">
     <h3>
@@ -715,7 +636,7 @@ window.onload = async function(){
     <input class="modal-input" id="addOff" placeholder="<span class='zh'>下班打卡 留空=无</span><span class='th'>เวลาเลิกงาน ปล่อยว่าง=ไม่มี</span>">
     <select class="modal-select" id="addAudit">
       <option value="待审核"><span class="zh">待审核</span><span class="th">รอตรวจสอบ</span></option>
-      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่าน</span></option>
+      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่านการตรวจ</span></option>
       <option value="已驳回"><span class="zh">已驳回</span><span class="th">ปฏิเสธ</span></option>
     </select>
     <select class="modal-select" id="addAbsent">
@@ -729,8 +650,6 @@ window.onload = async function(){
     </div>
   </div>
 </div>
-
-<!-- 编辑考勤弹窗 -->
 <div class="modal-mask" id="editModal">
   <div class="modal-box">
     <h3>
@@ -743,7 +662,7 @@ window.onload = async function(){
     <input class="modal-input" id="editOff" placeholder="<span class='zh'>下班打卡</span><span class='th'>เวลาเลิกงาน</span>">
     <select class="modal-select" id="editAudit">
       <option value="待审核"><span class="zh">待审核</span><span class="th">รอตรวจสอบ</span></option>
-      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่าน</span></option>
+      <option value="已通过"><span class="zh">已通过</span><span class="th">ผ่านการตรวจ</span></option>
       <option value="已驳回"><span class="zh">已驳回</span><span class="th">ปฏิเสธ</span></option>
     </select>
     <select class="modal-select" id="editAbsent">
