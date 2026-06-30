@@ -44,13 +44,16 @@ table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px;}
 th,td{border:1px solid #eee;padding:10px 4px;text-align:center;}
 th{background:#f7f8fa;}
 .edit-input{width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;}
+.edit-select{padding:4px;}
 .btn-save{background:#19be6b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
 .btn-del{background:#f56c6c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+.btn-add{background:#409EFF;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;margin-bottom:10px;}
 /* 弹窗样式 */
 .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;}
-.modal-box{background:#fff;width:90%;max-width:380px;padding:30px;border-radius:14px;}
+.modal-box{background:#fff;width:90%;max-width:420px;padding:30px;border-radius:14px;max-height:90vh;overflow-y:auto;}
 .modal-box h3{text-align:center;margin-bottom:20px;color:#222;}
 .modal-input{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
+.modal-select{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
 .modal-btn-group{display:flex;gap:10px;}
 .modal-confirm{flex:1;padding:12px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;cursor:pointer;}
 .modal-close{flex:1;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;}
@@ -58,6 +61,14 @@ th{background:#f7f8fa;}
 .hide{display:none !important;}
 .late{color:#f56c6c;font-weight:bold;}
 .normal{color:#19be6b;}
+.absent-full{color:#900;font-weight:bold;}
+.absent-half{color:#c66a00;font-weight:bold;}
+.full-attend{color:#008833;font-weight:bold;background:#e8fff0;padding:2px 6px;border-radius:4px;}
+.admin-tab-switch{display:flex;gap:10px;margin:10px 0;}
+.admin-tab-switch button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
+.admin-tab-switch button.active{background:#2d8cf0;color:#fff;}
+.stat-block{background:#f8f9fa;padding:12px;border-radius:8px;margin:10px 0;}
+.warn{color:#e64340;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -67,7 +78,7 @@ th{background:#f7f8fa;}
   <div class="login-card">
     <h2>三段打卡考勤系统</h2>
     <div class="input-box">
-      <input type="text" id="username" placeholder="账号：emp1 / emp2 / emp3 / emp4 / emp5 / emp6 / admin">
+      <input type="text" id="username" placeholder="账号：FANG / AMP / PA / TANG / KAN / AUM / admin">
     </div>
     <div class="input-box">
       <input type="password" id="password" placeholder="密码统一：123456">
@@ -98,11 +109,12 @@ th{background:#f7f8fa;}
       <div id="nowTime" class="time-text">00:00:00</div>
       <div class="location-tip" id="locTip">正在获取定位...</div>
       <div class="tip-text">
-        打卡规则：<br>
-        1.早班：11:00前正常，11点后迟到<br>
-        2.中班：16:00前正常，16点后迟到<br>
-        3.晚班：18:00前正常，18点后迟到<br>
-        4.下班：21:00前完成签退
+        打卡时段规则：<br>
+        ①早打卡：10:30 ~ 11:30（11点后迟到）<br>
+        ②中打卡：15:30 ~ 16:30（16点后迟到）<br>
+        ③晚打卡：17:30 ~ 18:30（18点后迟到）<br>
+        ④下班/加班：21:00 ~ 23:00（21:30后算加班）<br>
+        禁止打卡：11:31-15:29 / 18:31-20:59 / 23:01-次日10:29
       </div>
       <button class="clock-submit" id="clockBtn">立即打卡</button>
       <div class="tip-text" id="clockTip"></div>
@@ -120,6 +132,7 @@ th{background:#f7f8fa;}
           <th>中打卡</th>
           <th>晚打卡</th>
           <th>下班</th>
+          <th>状态标记</th>
           <th>审核状态</th>
         </tr>
       </thead>
@@ -141,28 +154,55 @@ th{background:#f7f8fa;}
   </div>
 </div>
 
-<!-- 管理员后台页面（同页面切换，不跳转新网址） -->
+<!-- 新增考勤弹窗 -->
+<div id="addRecordModal" class="modal-mask hide">
+  <div class="modal-box">
+    <h3>手动添加员工考勤（管理员不受时段限制）</h3>
+    <select class="modal-select" id="addEmp">
+      <option value="FANG">FANG</option>
+      <option value="AMP">AMP</option>
+      <option value="PA">PA</option>
+      <option value="TANG">TANG</option>
+      <option value="KAN">KAN</option>
+      <option value="AUM">AUM</option>
+    </select>
+    <input class="modal-input" type="date" id="addDate">
+    <input class="modal-input" placeholder="早打卡 如09:30，无则留空" id="addT1">
+    <input class="modal-input" placeholder="中打卡 如15:20，无则留空" id="addT2">
+    <input class="modal-input" placeholder="晚打卡 如17:10，无则留空" id="addT3">
+    <input class="modal-input" placeholder="下班打卡 如20:00，无则留空" id="addOff">
+    <select class="modal-select" id="addAbsent">
+      <option value="">无旷工</option>
+      <option value="full">全天旷工</option>
+      <option value="half">半日旷工</option>
+    </select>
+    <div class="modal-btn-group">
+      <button class="modal-confirm" onclick="saveAddRecord()">保存</button>
+      <button class="modal-close" onclick="closeAddModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员后台页面 -->
 <div id="adminPage" class="hide" style="padding:15px;">
   <div class="header">
     <h1>全员考勤管理后台</h1>
     <button class="logout-btn" onclick="backStaffPage()">返回员工打卡主页</button>
   </div>
-  <p style="margin:12px 0;color:#666;">修改后自动保存，所有员工页面实时同步更新</p>
-  <table>
-    <thead>
-      <tr>
-        <th>员工账号</th>
-        <th>日期</th>
-        <th>早打卡时间</th>
-        <th>中打卡时间</th>
-        <th>晚打卡时间</th>
-        <th>下班时间</th>
-        <th>审核状态</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody id="allRecordBox"></tbody>
-  </table>
+  <p style="margin:12px 0;color:#666;">修改后自动保存，所有员工页面实时同步更新；管理员新增/编辑不受打卡时段限制</p>
+  <button class="btn-add" onclick="openAddModal()">手动新增考勤记录</button>
+  <div class="admin-tab-switch">
+    <button id="tabByUser" class="active" onclick="switchAdminView('user')">按员工查看</button>
+    <button id="tabByDate" onclick="switchAdminView('date')">按日期查看</button>
+  </div>
+  <!-- 按员工视图 -->
+  <div id="viewByUser">
+    <div id="userWrap"></div>
+  </div>
+  <!-- 按日期视图 -->
+  <div id="viewByDate" class="hide">
+    <div id="dateWrap"></div>
+  </div>
 </div>
 
 <script>
@@ -170,20 +210,71 @@ th{background:#f7f8fa;}
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
-// 账号列表
+// 员工账号更新：FANG、AMP、PA、TANG、KAN、AUM
 const userList = {
-  emp1:{pwd:"123456",role:"user"},
-  emp2:{pwd:"123456",role:"user"},
-  emp3:{pwd:"123456",role:"user"},
-  emp4:{pwd:"123456",role:"user"},
-  emp5:{pwd:"123456",role:"user"},
-  emp6:{pwd:"123456",role:"user"},
+  FANG:{pwd:"123456",role:"user"},
+  AMP:{pwd:"123456",role:"user"},
+  PA:{pwd:"123456",role:"user"},
+  TANG:{pwd:"123456",role:"user"},
+  KAN:{pwd:"123456",role:"user"},
+  AUM:{pwd:"123456",role:"user"},
   admin:{pwd:"123456",role:"admin"}
 };
+const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
 let currentUser = null;
 let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
 let currentLocation = null;
+let adminViewType = "user";
 
+// 获取本周起止日期
+function getThisWeekRange(){
+  const now = new Date();
+  const day = now.getDay();
+  const start = new Date(now.getTime() - (day||7-1)*24*3600*1000);
+  const end = new Date(start.getTime() + 6*24*3600*1000);
+  const format = d=>`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+  return {start:format(start),end:format(end)};
+}
+// 日期转标准字符串
+function fmtDate(d){
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+// 时分转分钟，方便区间判断
+function timeToMin(h, m){
+  return h * 60 + m;
+}
+// 判断当前时间是否在对应打卡窗口
+function canClockNow(step){
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes();
+  const curMin = timeToMin(h, m);
+  switch(step){
+    case 1: // 早 10:30 - 11:30
+      return curMin >= timeToMin(10,30) && curMin <= timeToMin(11,30);
+    case 2: // 中 15:30 - 16:30
+      return curMin >= timeToMin(15,30) && curMin <= timeToMin(16,30);
+    case 3: // 晚 17:30 - 18:30
+      return curMin >= timeToMin(17,30) && curMin <= timeToMin(18,30);
+    case 4: // 下班21:00 -23:00
+      return curMin >= timeToMin(21,0) && curMin <= timeToMin(23,0);
+  }
+  return false;
+}
+// 判断迟到
+function isLate(hourStr, limitHour){
+  if(!hourStr) return "";
+  let h = parseInt(hourStr.split(":")[0]);
+  return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
+}
+// 统计单条记录迟到次数
+function countLateItem(item){
+  let cnt = 0;
+  if(item.t1){let h=+item.t1.split(":")[0];if(h>=11)cnt++}
+  if(item.t2){let h=+item.t2.split(":")[0];if(h>=16)cnt++}
+  if(item.t3){let h=+item.t3.split(":")[0];if(h>=18)cnt++}
+  return cnt;
+}
 // 实时时钟
 function updateTime(){
   const d = new Date();
@@ -220,21 +311,12 @@ function getLocation(){
     {enableHighAccuracy:true,timeout:8000}
   );
 }
-
 // 经纬度距离计算（米）
 function getDistance(lat1,lng1,lat2,lng2){
   const rad = Math.PI / 180;
   const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
   return 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a)) * 6371 * 1000;
 }
-
-// 判断迟到标记
-function isLate(hourStr, limitHour){
-  if(!hourStr) return "";
-  let h = parseInt(hourStr.split(":")[0]);
-  return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
-}
-
 // 切换员工端标签
 function switchTab(pageId){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -242,7 +324,6 @@ function switchTab(pageId){
   event.target.classList.add("active");
   document.getElementById(pageId+"Page").classList.add("show");
 }
-
 // 员工账号登录
 function userLogin(){
   const un = document.getElementById("username").value.trim();
@@ -255,11 +336,10 @@ function userLogin(){
     getLocation();
     renderRecord();
   }else{
-    alert("账号或密码错误\n可用账号：emp1~emp6、admin，密码123456");
+    alert("账号或密码错误\n可用账号：FANG / AMP / PA / TANG / KAN / AUM / admin，密码123456");
   }
 }
-
-// 退出登录，回到登录页
+// 退出登录
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
@@ -267,19 +347,21 @@ function logout(){
   document.getElementById("mainPage").classList.add("hide");
   document.getElementById("adminPage").classList.add("hide");
 }
-
-// 打开管理员登录弹窗
-function openAdminModal(){
-  document.getElementById("adminModal").classList.remove("hide");
-  document.getElementById("adminUser").value = "";
-  document.getElementById("adminPwd").value = "";
+// 管理员弹窗
+function openAdminModal(){document.getElementById("adminModal").classList.remove("hide");document.getElementById("adminUser").value="";document.getElementById("adminPwd").value="";}
+function closeAdminModal(){document.getElementById("adminModal").classList.add("hide");}
+// 新增考勤弹窗
+function openAddModal(){
+  document.getElementById("addRecordModal").classList.remove("hide");
+  document.getElementById("addDate").value = fmtDate(new Date()).replace("/","-").replace("/","-");
+  document.getElementById("addT1").value="";
+  document.getElementById("addT2").value="";
+  document.getElementById("addT3").value="";
+  document.getElementById("addOff").value="";
+  document.getElementById("addAbsent").value="";
 }
-// 关闭管理员弹窗
-function closeAdminModal(){
-  document.getElementById("adminModal").classList.add("hide");
-}
-
-// 管理员身份校验登录，切换管理后台
+function closeAddModal(){document.getElementById("addRecordModal").classList.add("hide");}
+// 管理员登录
 function adminLogin(){
   const u = document.getElementById("adminUser").value.trim();
   const p = document.getElementById("adminPwd").value.trim();
@@ -287,132 +369,127 @@ function adminLogin(){
     closeAdminModal();
     document.getElementById("mainPage").classList.add("hide");
     document.getElementById("adminPage").classList.remove("hide");
-    renderAllRecord();
+    renderAdminView();
   }else{
     alert("管理员账号密码错误");
   }
 }
-
-// 从管理后台返回员工打卡主页
+// 返回员工页面
 function backStaffPage(){
   document.getElementById("adminPage").classList.add("hide");
   document.getElementById("mainPage").classList.remove("hide");
   renderRecord();
 }
-
-// 打卡核心逻辑
+// 切换管理员视图
+function switchAdminView(type){
+  adminViewType = type;
+  document.getElementById("tabByUser").classList.toggle("active",type==="user");
+  document.getElementById("tabByDate").classList.toggle("active",type==="date");
+  document.getElementById("viewByUser").classList.toggle("hide",type!=="user");
+  document.getElementById("viewByDate").classList.toggle("hide",type!=="date");
+  renderAdminView();
+}
+// 打卡核心逻辑（新增时段限制）
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
-  if(!currentLocation){
-    tip.innerText = "未获取定位，无法打卡";
-    return;
-  }
+  if(!currentLocation){tip.innerText = "未获取定位，无法打卡";return;}
   let dis = getDistance(COMPANY_LAT,COMPANY_LNG,currentLocation.lat,currentLocation.lng);
-  if(dis > ALLOW_RANGE){
-    tip.innerText = "不在打卡范围内，禁止打卡";
-    return;
-  }
+  if(dis > ALLOW_RANGE){tip.innerText = "不在打卡范围内，禁止打卡";return;}
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString();
+  const dateStr = fmtDate(now);
   const timeStr = now.toLocaleTimeString();
   const hour = now.getHours();
 
   let dayData = clockRecord.find(item=>item.user===currentUser && item.date===dateStr);
   if(!dayData){
-    dayData = {
-      user:currentUser,
-      date:dateStr,
-      t1:"",
-      t2:"",
-      t3:"",
-      off:"",
-      audit:"待审核"
-    };
+    dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};
     clockRecord.push(dayData);
   }
 
+  // 分段判断打卡窗口
   if(!dayData.t1){
+    if(!canClockNow(1)){
+      tip.innerHTML = `<span class="warn">不在早打卡时段（10:30-11:30），禁止打卡</span>`;
+      return;
+    }
     dayData.t1 = timeStr;
     tip.innerText = `第一段打卡成功 ${timeStr} ${isLate(timeStr,11)}`;
   }else if(!dayData.t2){
+    if(!canClockNow(2)){
+      tip.innerHTML = `<span class="warn">不在中打卡时段（15:30-16:30），禁止打卡</span>`;
+      return;
+    }
     dayData.t2 = timeStr;
     tip.innerText = `第二段打卡成功 ${timeStr} ${isLate(timeStr,16)}`;
   }else if(!dayData.t3){
+    if(!canClockNow(3)){
+      tip.innerHTML = `<span class="warn">不在晚打卡时段（17:30-18:30），禁止打卡</span>`;
+      return;
+    }
     dayData.t3 = timeStr;
     tip.innerText = `第三段打卡成功 ${timeStr} ${isLate(timeStr,18)}`;
   }else if(!dayData.off){
-    if(hour>21){
-      tip.innerText = "已超过21点，下班打卡超时";
-    }else{
-      dayData.off = timeStr;
-      tip.innerText = `下班签退完成 ${timeStr}`;
+    if(!canClockNow(4)){
+      tip.innerHTML = `<span class="warn">不在下班打卡时段（21:00-23:00），禁止打卡</span>`;
+      return;
     }
+    if(hour >= 21 && now.getMinutes() > 30){
+      tip.innerText = `加班签退完成 ${timeStr}`;
+    }else{
+      tip.innerText = `正常下班签退完成 ${timeStr}`;
+    }
+    dayData.off = timeStr;
   }else{
-    tip.innerText = "今日四段打卡全部完成";
+    tip.innerHTML = `<span class="warn">今日四段打卡全部完成，无需重复打卡</span>`;
+    return;
   }
-
-  saveClockData();
-  renderRecord();
+  saveClockData();renderRecord();
 }
-
-// 保存数据到本地存储
-function saveClockData(){
-  localStorage.setItem("clockData",JSON.stringify(clockRecord));
-}
-
-// 渲染当前员工个人记录
+// 保存数据
+function saveClockData(){localStorage.setItem("clockData",JSON.stringify(clockRecord));clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];}
+// 员工个人记录渲染
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
-  const myData = clockRecord.filter(i=>i.user===currentUser);
+  const myData = clockRecord.filter(i=>i.user===currentUser).sort((a,b)=>new Date(b.date)-new Date(a.date));
   myData.forEach(item=>{
+    let absentText = "";
+    if(item.absent==="full")absentText="<span class='absent-full'>全天旷工</span>";
+    if(item.absent==="half")absentText="<span class='absent-half'>半日旷工</span>";
     box.innerHTML += `<tr>
       <td>${item.date}</td>
       <td>${item.t1||"-"} ${isLate(item.t1,11)}</td>
       <td>${item.t2||"-"} ${isLate(item.t2,16)}</td>
       <td>${item.t3||"-"} ${isLate(item.t3,18)}</td>
       <td>${item.off||"-"}</td>
+      <td>${absentText||"正常出勤"}</td>
       <td>${item.audit}</td>
     </tr>`;
   })
 }
-
-// 渲染管理员全部员工记录
-function renderAllRecord(){
-  clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
-  const box = document.getElementById("allRecordBox");
-  box.innerHTML = "";
-  if(clockRecord.length === 0){
-    box.innerHTML = "<tr><td colspan='8'>暂无任何打卡记录</td></tr>";
-    return;
+// 保存管理员新增考勤（管理员不受时段限制）
+function saveAddRecord(){
+  const emp = document.getElementById("addEmp").value;
+  let dStr = document.getElementById("addDate").value.replace("-","/").replace("-","/");
+  const t1 = document.getElementById("addT1").value.trim();
+  const t2 = document.getElementById("addT2").value.trim();
+  const t3 = document.getElementById("addT3").value.trim();
+  const off = document.getElementById("addOff").value.trim();
+  const absent = document.getElementById("addAbsent").value;
+  let item = clockRecord.find(x=>x.user===emp && x.date===dStr);
+  if(!item){
+    item = {user:emp,date:dStr,t1:t1,t2:t2,t3:t3,off:off,audit:"待审核",absent:absent};
+    clockRecord.push(item);
+  }else{
+    item.t1=t1;item.t2=t2;item.t3=t3;item.off=off;item.absent=absent;
   }
-  clockRecord.forEach((item,idx)=>{
-    box.innerHTML += `
-    <tr>
-      <td>${item.user}</td>
-      <td>${item.date}</td>
-      <td><input class="edit-input" value="${item.t1}" id="t1_${idx}"> ${isLate(item.t1,11)}</td>
-      <td><input class="edit-input" value="${item.t2}" id="t2_${idx}"> ${isLate(item.t2,16)}</td>
-      <td><input class="edit-input" value="${item.t3}" id="t3_${idx}"> ${isLate(item.t3,18)}</td>
-      <td><input class="edit-input" value="${item.off}" id="off_${idx}"></td>
-      <td>
-        <select id="audit_${idx}">
-          <option value="待审核" ${item.audit==="待审核"?"selected":""}>待审核</option>
-          <option value="已通过" ${item.audit==="已通过"?"selected":""}>已通过</option>
-          <option value="已驳回" ${item.audit==="已驳回"?"selected":""}>已驳回</option>
-        </select>
-      </td>
-      <td>
-        <button class="btn-save" onclick="editRecord(${idx})">保存修改</button>
-        <button class="btn-del" onclick="delRecord(${idx})">删除</button>
-      </td>
-    </tr>
-    `;
-  })
+  saveClockData();
+  closeAddModal();
+  renderAdminView();
+  alert("考勤添加完成，管理员操作不受打卡时段限制");
 }
-
-// 管理员保存修改单条记录
+// 管理员修改单条记录（不受时段限制）
 function editRecord(index){
   const row = clockRecord[index];
   row.t1 = document.getElementById(`t1_${index}`).value.trim();
@@ -420,32 +497,115 @@ function editRecord(index){
   row.t3 = document.getElementById(`t3_${index}`).value.trim();
   row.off = document.getElementById(`off_${index}`).value.trim();
   row.audit = document.getElementById(`audit_${index}`).value;
+  row.absent = document.getElementById(`absent_${index}`).value;
   saveClockData();
-  renderAllRecord();
-  alert("修改已保存，员工页面实时同步");
+  renderAdminView();
+  alert("修改已保存，员工页面同步更新");
 }
-
-// 管理员删除单条打卡记录
+// 删除记录
 function delRecord(index){
   if(confirm("确认删除该员工当日全部打卡记录？")){
     clockRecord.splice(index,1);
     saveClockData();
-    renderAllRecord();
+    renderAdminView();
   }
 }
-
-// 监听存储变化，其他页面修改自动刷新
+// 渲染管理员视图切换
+function renderAdminView(){
+  const week = getThisWeekRange();
+  if(adminViewType==="user"){
+    let wrap = document.getElementById("userWrap");
+    wrap.innerHTML = "";
+    empList.forEach(emp=>{
+      const list = clockRecord.filter(x=>x.user===emp && x.date>=week.start && x.date<=week.end);
+      let totalLate = 0;
+      list.forEach(i=>totalLate += countLateItem(i));
+      let fullAttend = totalLate===0 && list.length>0;
+      let html = `<div class="stat-block"><h4>${emp} ${fullAttend?"<span class='full-attend'>本周全勤</span>":""} 本周迟到总次数：${totalLate}</h4>`;
+      html += `<table><thead><tr><th>日期</th><th>早</th><th>中</th><th>晚</th><th>下班</th><th>旷工标记</th><th>审核</th><th>操作</th></tr></thead><tbody>`;
+      list.forEach((item,idx)=>{
+        const realIdx = clockRecord.findIndex(x=>x.user===emp&&x.date===item.date);
+        let absSel = `<select class="edit-select" id="absent_${realIdx}">
+          <option value="" ${item.absent==""?"selected":""}>无</option>
+          <option value="full" ${item.absent=="full"?"selected":""}>全天旷工</option>
+          <option value="half" ${item.absent=="half"?"selected":""}>半日旷工</option>
+        </select>`;
+        html += `<tr>
+          <td>${item.date}</td>
+          <td><input class="edit-input" value="${item.t1}" id="t1_${realIdx}">${isLate(item.t1,11)}</td>
+          <td><input class="edit-input" value="${item.t2}" id="t2_${realIdx}">${isLate(item.t2,16)}</td>
+          <td><input class="edit-input" value="${item.t3}" id="t3_${realIdx}">${isLate(item.t3,18)}</td>
+          <td><input class="edit-input" value="${item.off}" id="off_${realIdx}"></td>
+          <td>${absSel}</td>
+          <td>
+            <select class="edit-select" id="audit_${realIdx}">
+              <option value="待审核" ${item.audit=="待审核"?"selected":""}>待审核</option>
+              <option value="已通过" ${item.audit=="已通过"?"selected":""}>已通过</option>
+              <option value="已驳回" ${item.audit=="已驳回"?"selected":""}>已驳回</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn-save" onclick="editRecord(${realIdx})">保存</button>
+            <button class="btn-del" onclick="delRecord(${realIdx})">删除</button>
+          </td>
+        </tr>`;
+      })
+      html += `</tbody></table></div>`;
+      wrap.innerHTML += html;
+    })
+  }else{
+    let wrap = document.getElementById("dateWrap");
+    wrap.innerHTML = `<div class="stat-block"><h4>本周范围：${week.start} ~ ${week.end}</h4>`;
+    let weekData = clockRecord.filter(x=>x.date>=week.start&&x.date<=week.end);
+    let allLateCnt = 0;
+    weekData.forEach(i=>allLateCnt+=countLateItem(i));
+    wrap.innerHTML += `<p>本周全员迟到总次数：${allLateCnt}</p></div>`;
+    // 按日期分组
+    const group = {};
+    weekData.forEach(item=>{
+      if(!group[item.date])group[item.date]=[];
+      group[item.date].push(item);
+    })
+    Object.keys(group).sort((a,b)=>new Date(a)-new Date(b)).forEach(d=>{
+      wrap.innerHTML += `<div class="stat-block"><h4>日期：${d}</h4><table><thead><tr><th>员工</th><th>早</th><th>中</th><th>晚</th><th>下班</th><th>旷工</th><th>审核</th><th>操作</th></tr></thead><tbody>`;
+      group[d].forEach(item=>{
+        const realIdx = clockRecord.findIndex(x=>x.user===item.user&&x.date===item.date);
+        let absSel = `<select class="edit-select" id="absent_${realIdx}">
+          <option value="" ${item.absent==""?"selected":""}>无</option>
+          <option value="full" ${item.absent=="full"?"selected":""}>全天旷工</option>
+          <option value="half" ${item.absent=="half"?"selected":""}>半日旷工</option>
+        </select>`;
+        wrap.innerHTML += `<tr>
+          <td>${item.user}</td>
+          <td><input class="edit-input" value="${item.t1}" id="t1_${realIdx}">${isLate(item.t1,11)}</td>
+          <td><input class="edit-input" value="${item.t2}" id="t2_${realIdx}">${isLate(item.t2,16)}</td>
+          <td><input class="edit-input" value="${item.t3}" id="t3_${realIdx}">${isLate(item.t3,18)}</td>
+          <td><input class="edit-input" value="${item.off}" id="off_${realIdx}"></td>
+          <td>${absSel}</td>
+          <td>
+            <select class="edit-select" id="audit_${realIdx}">
+              <option value="待审核" ${item.audit=="待审核"?"selected":""}>待审核</option>
+              <option value="已通过" ${item.audit=="已通过"?"selected":""}>已通过</option>
+              <option value="已驳回" ${item.audit=="已驳回"?"selected":""}>已驳回</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn-save" onclick="editRecord(${realIdx})">保存</button>
+            <button class="btn-del" onclick="delRecord(${realIdx})">删除</button>
+          </td>
+        </tr>`;
+      })
+      wrap.innerHTML += `</tbody></table></div>`;
+    })
+  }
+}
+// 监听存储同步
 window.addEventListener("storage", function(){
   clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
-  if(!document.getElementById("mainPage").classList.contains("hide")){
-    renderRecord();
-  }
-  if(!document.getElementById("adminPage").classList.contains("hide")){
-    renderAllRecord();
-  }
+  if(!document.getElementById("mainPage").classList.contains("hide")) renderRecord();
+  if(!document.getElementById("adminPage").classList.contains("hide")) renderAdminView();
 })
-
-// 页面加载自动免登录
+// 自动免登录
 window.onload = function(){
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
