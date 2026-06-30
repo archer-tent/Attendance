@@ -60,7 +60,6 @@ th{background:#f7f8fa;}
   <div class="tab-bar">
     <div class="tab active" onclick="switchTab('clock')">打卡</div>
     <div class="tab" onclick="switchTab('record')">我的记录</div>
-    <div class="tab admin-show" onclick="switchTab('audit')">考勤审核</div>
   </div>
 
   <div id="clockPage" class="page show">
@@ -80,7 +79,7 @@ th{background:#f7f8fa;}
   </div>
 
   <div id="recordPage" class="page">
-    <h3>我的打卡记录</h3>
+    <h3>我的打卡记录（管理员修改实时同步）</h3>
     <table>
       <thead>
         <tr>
@@ -95,44 +94,29 @@ th{background:#f7f8fa;}
       <tbody id="recordList"></tbody>
     </table>
   </div>
-
-  <div id="auditPage" class="page">
-    <h3>全员考勤审核</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>员工</th>
-          <th>日期</th>
-          <th>早/中/晚/下班</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody id="auditList"></tbody>
-    </table>
-  </div>
 </div>
 
 <script>
-// ========== 配置区 ==========
+// 你的公司坐标
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
 
-// 6个员工账号 + 管理员，密码全部123456
+// 账号列表
 const userList = {
-  PA:{pwd:"123456",role:"PA"},
-  AUM:{pwd:"123456",role:"AUM"},
-  TANG:{pwd:"123456",role:"TANG"},
-  FANG:{pwd:"123456",role:"FANG"},
-  AMP:{pwd:"123456",role:"AMP"},
-  KAN:{pwd:"123456",role:"KAN"},
-  admin:{pwd:"164315",role:"admin"}
+  emp1:{pwd:"123456",role:"user"},
+  emp2:{pwd:"123456",role:"user"},
+  emp3:{pwd:"123456",role:"user"},
+  emp4:{pwd:"123456",role:"user"},
+  emp5:{pwd:"123456",role:"user"},
+  emp6:{pwd:"123456",role:"user"},
+  admin:{pwd:"123456",role:"admin"}
 };
 let currentUser = null;
 let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
 let currentLocation = null;
 
-// 自动刷新时间
+// 刷新时间
 function updateTime(){
   const d = new Date();
   const h = String(d.getHours()).padStart(2,"0");
@@ -143,7 +127,7 @@ function updateTime(){
 setInterval(updateTime,1000);
 updateTime();
 
-// 获取GPS定位
+// 获取定位
 function getLocation(){
   const locTip = document.getElementById("locTip");
   if(!navigator.geolocation){
@@ -169,21 +153,21 @@ function getLocation(){
   );
 }
 
-// 经纬度计算距离（米）
+// 两点距离计算
 function getDistance(lat1,lng1,lat2,lng2){
   const rad = Math.PI / 180;
   const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
   return 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a)) * 6371 * 1000;
 }
 
-// 判断是否迟到
+// 判断迟到
 function isLate(hourStr, limitHour){
   if(!hourStr) return "";
   let h = parseInt(hourStr.split(":")[0]);
   return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
 }
 
-// 切换标签页
+// 切换标签
 function switchTab(pageId){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
@@ -191,7 +175,7 @@ function switchTab(pageId){
   document.getElementById(pageId+"Page").classList.add("show");
 }
 
-// 登录（记住账号，免重复登录）
+// 登录
 function login(){
   const un = document.getElementById("username").value.trim();
   const pw = document.getElementById("password").value.trim();
@@ -200,18 +184,14 @@ function login(){
     localStorage.setItem("loginUser",un);
     document.getElementById("loginPage").classList.add("hide");
     document.getElementById("mainPage").classList.remove("hide");
-    if(userList[un].role !== "admin"){
-      document.querySelectorAll(".admin-show").forEach(el=>el.classList.add("hide"));
-    }
     getLocation();
     renderRecord();
-    renderAudit();
   }else{
     alert("账号或密码错误\n可用账号：emp1~emp6、admin，密码123456");
   }
 }
 
-// 退出登录，清除记住状态
+// 退出登录
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
@@ -219,7 +199,7 @@ function logout(){
   document.getElementById("mainPage").classList.add("hide");
 }
 
-// 打卡主逻辑
+// 打卡逻辑
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   if(!currentLocation){
@@ -237,22 +217,20 @@ document.getElementById("clockBtn").onclick = function(){
   const timeStr = now.toLocaleTimeString();
   const hour = now.getHours();
 
-  // 查找今日记录，结构四段打卡
   let dayData = clockRecord.find(item=>item.user===currentUser && item.date===dateStr);
   if(!dayData){
     dayData = {
       user:currentUser,
       date:dateStr,
-      t1:"", // 11点前早打卡
-      t2:"", // 16点前中打卡
-      t3:"", // 18点前晚打卡
-      off:"",// 21点下班
+      t1:"",
+      t2:"",
+      t3:"",
+      off:"",
       audit:"待审核"
     };
     clockRecord.push(dayData);
   }
 
-  // 四段打卡判断
   if(!dayData.t1){
     dayData.t1 = timeStr;
     tip.innerText = `第一段打卡成功 ${timeStr} ${isLate(timeStr,11)}`;
@@ -275,7 +253,6 @@ document.getElementById("clockBtn").onclick = function(){
 
   localStorage.setItem("clockData",JSON.stringify(clockRecord));
   renderRecord();
-  renderAudit();
 }
 
 // 渲染个人记录
@@ -295,52 +272,21 @@ function renderRecord(){
   })
 }
 
-// 管理员审核列表
-function renderAudit(){
-  const box = document.getElementById("auditList");
-  box.innerHTML = "";
-  clockRecord.forEach(item=>{
-    box.innerHTML += `<tr>
-      <td>${item.user}</td>
-      <td>${item.date}</td>
-      <td>早:${item.t1||"-"} 中:${item.t2||"-"} 晚:${item.t3||"-"} 下班:${item.off||"-"}</td>
-      <td>
-        ${item.audit==="待审核"?
-        `<span class="agree" onclick="pass('${item.user}','${item.date}')">通过</span>
-        <span class="refuse" onclick="reject('${item.user}','${item.date}')">驳回</span>`
-        :item.audit}
-      </td>
-    </tr>`;
-  })
-}
-
-function pass(u,d){
-  let row = clockRecord.find(i=>i.user===u && i.date===d);
-  if(row) row.audit = "已通过";
-  localStorage.setItem("clockData",JSON.stringify(clockRecord));
-  renderAudit();renderRecord();
-}
-function reject(u,d){
-  let row = clockRecord.find(i=>i.user===u && i.date===d);
-  if(row) row.audit = "已驳回";
-  localStorage.setItem("clockData",JSON.stringify(clockRecord));
-  renderAudit();renderRecord();
-}
-
-// 页面加载自动登录（记住账号，免输密码）
+// 页面加载自动登录
 window.onload = function(){
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
     currentUser = cacheUser;
     document.getElementById("loginPage").classList.add("hide");
     document.getElementById("mainPage").classList.remove("hide");
-    if(userList[cacheUser].role !== "admin"){
-      document.querySelectorAll(".admin-show").forEach(el=>el.classList.add("hide"));
-    }
     getLocation();
     renderRecord();
-    renderAudit();
   }
+  // 实时监听存储变化，管理员修改自动刷新页面
+  window.addEventListener("storage", function(){
+    clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+    renderRecord();
+  })
 }
 </script>
 </body>
