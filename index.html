@@ -9,36 +9,60 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system, BlinkMacSystemFont, "Microsoft YaHei";}
 body{background:#f4f5f7;padding-bottom:40px;}
+/* 登录页 */
 .login-wrap{padding:60px 20px;}
-.login-card{background:#fff;border-radius:16px;padding:30px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.login-card{background:#fff;border-radius:16px;padding:30px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);max-width:420px;margin:0 auto;}
 .login-card h2{text-align:center;color:#2d8cf0;margin-bottom:30px;font-size:22px;}
 .input-box{margin-bottom:18px;}
 .input-box input{width:100%;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none;}
-.btn{width:100%;padding:15px;background:#2d8cf0;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:500;}
-.header{background:#2d8cf0;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;}
+.btn{width:100%;padding:15px;background:#2d8cf0;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:500;cursor:pointer;}
+/* 顶部头部 */
+.header{background:#2d8cf0;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .header h1{font-size:18px;}
-.logout-btn{background:#fff;color:#2d8cf0;border:none;padding:6px 12px;border-radius:8px;font-size:14px;}
+.header-buttons{display:flex;gap:10px;align-items:center;}
+.logout-btn{background:#fff;color:#2d8cf0;border:none;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer;}
+/* 管理员入口：仅电脑可见，手机隐藏 */
+.admin-enter-btn{background:#ff7d00;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer;}
+@media (max-width:768px){
+  .admin-enter-btn{display:none !important;}
+}
+/* 标签栏 */
 .tab-bar{display:flex;background:#fff;margin:15px 15px;border-radius:12px;overflow:hidden;}
-.tab{flex:1;text-align:center;padding:14px 0;font-size:15px;color:#666;}
+.tab{flex:1;text-align:center;padding:14px 0;font-size:15px;color:#666;cursor:pointer;}
 .tab.active{background:#2d8cf0;color:#fff;}
+/* 页面容器 */
 .page{margin:0 15px;background:#fff;border-radius:16px;padding:25px;display:none;}
 .page.show{display:block;}
+/* 打卡页 */
 .clock-box{text-align:center;}
 .time-text{font-size:42px;color:#2d8cf0;margin:20px 0;font-weight:500;}
 .location-tip{font-size:14px;color:#666;margin-bottom:20px;line-height:1.6;}
-.clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;}
+.clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;cursor:pointer;}
 .tip-text{margin-top:16px;font-size:15px;line-height:1.7;}
+/* 表格通用 */
 table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px;}
 th,td{border:1px solid #eee;padding:10px 4px;text-align:center;}
 th{background:#f7f8fa;}
-.agree{color:#19be6b;margin-right:8px;}
-.refuse{color:#f56c6c;}
+.edit-input{width:80px;padding:4px;border:1px solid #ccc;border-radius:4px;}
+.btn-save{background:#19be6b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+.btn-del{background:#f56c6c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+/* 弹窗样式 */
+.modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;}
+.modal-box{background:#fff;width:90%;max-width:380px;padding:30px;border-radius:14px;}
+.modal-box h3{text-align:center;margin-bottom:20px;color:#222;}
+.modal-input{width:100%;padding:12px 14px;margin-bottom:16px;border:1px solid #ddd;border-radius:8px;font-size:16px;}
+.modal-btn-group{display:flex;gap:10px;}
+.modal-confirm{flex:1;padding:12px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;cursor:pointer;}
+.modal-close{flex:1;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;}
+/* 工具类 */
 .hide{display:none !important;}
 .late{color:#f56c6c;font-weight:bold;}
 .normal{color:#19be6b;}
 </style>
 </head>
 <body>
+
+<!-- 员工登录页面 -->
 <div id="loginPage" class="login-wrap">
   <div class="login-card">
     <h2>三段打卡考勤系统</h2>
@@ -48,20 +72,27 @@ th{background:#f7f8fa;}
     <div class="input-box">
       <input type="password" id="password" placeholder="密码统一：123456">
     </div>
-    <button class="btn" onclick="login()">登录打卡</button>
+    <button class="btn" onclick="userLogin()">登录打卡</button>
   </div>
 </div>
 
+<!-- 主页面（员工打卡） -->
 <div id="mainPage" class="hide">
   <div class="header">
     <h1>手机考勤打卡</h1>
-    <button class="logout-btn" onclick="logout()">退出</button>
+    <div class="header-buttons">
+      <!-- 电脑端才显示管理员入口，手机自动隐藏 -->
+      <button class="admin-enter-btn" onclick="openAdminModal()">管理员后台</button>
+      <button class="logout-btn" onclick="logout()">退出</button>
+    </div>
   </div>
+
   <div class="tab-bar">
     <div class="tab active" onclick="switchTab('clock')">打卡</div>
     <div class="tab" onclick="switchTab('record')">我的记录</div>
   </div>
 
+  <!-- 打卡页面 -->
   <div id="clockPage" class="page show">
     <div class="clock-box">
       <div id="nowTime" class="time-text">00:00:00</div>
@@ -78,6 +109,7 @@ th{background:#f7f8fa;}
     </div>
   </div>
 
+  <!-- 个人记录页面 -->
   <div id="recordPage" class="page">
     <h3>我的打卡记录（管理员修改实时同步）</h3>
     <table>
@@ -96,12 +128,48 @@ th{background:#f7f8fa;}
   </div>
 </div>
 
+<!-- 管理员登录弹窗 -->
+<div id="adminModal" class="modal-mask hide">
+  <div class="modal-box">
+    <h3>管理员验证登录</h3>
+    <input class="modal-input" id="adminUser" placeholder="管理员账号 admin">
+    <input class="modal-input" type="password" id="adminPwd" placeholder="密码 123456">
+    <div class="modal-btn-group">
+      <button class="modal-confirm" onclick="adminLogin()">进入后台</button>
+      <button class="modal-close" onclick="closeAdminModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 管理员后台页面（同页面切换，不跳转新网址） -->
+<div id="adminPage" class="hide" style="padding:15px;">
+  <div class="header">
+    <h1>全员考勤管理后台</h1>
+    <button class="logout-btn" onclick="backStaffPage()">返回员工打卡主页</button>
+  </div>
+  <p style="margin:12px 0;color:#666;">修改后自动保存，所有员工页面实时同步更新</p>
+  <table>
+    <thead>
+      <tr>
+        <th>员工账号</th>
+        <th>日期</th>
+        <th>早打卡时间</th>
+        <th>中打卡时间</th>
+        <th>晚打卡时间</th>
+        <th>下班时间</th>
+        <th>审核状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="allRecordBox"></tbody>
+  </table>
+</div>
+
 <script>
-// 你的公司坐标
+// ====================== 配置区 ======================
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
-
 // 账号列表
 const userList = {
   emp1:{pwd:"123456",role:"user"},
@@ -116,7 +184,7 @@ let currentUser = null;
 let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
 let currentLocation = null;
 
-// 刷新时间
+// 实时时钟
 function updateTime(){
   const d = new Date();
   const h = String(d.getHours()).padStart(2,"0");
@@ -127,7 +195,7 @@ function updateTime(){
 setInterval(updateTime,1000);
 updateTime();
 
-// 获取定位
+// 获取GPS定位
 function getLocation(){
   const locTip = document.getElementById("locTip");
   if(!navigator.geolocation){
@@ -153,21 +221,21 @@ function getLocation(){
   );
 }
 
-// 两点距离计算
+// 经纬度距离计算（米）
 function getDistance(lat1,lng1,lat2,lng2){
   const rad = Math.PI / 180;
   const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
   return 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a)) * 6371 * 1000;
 }
 
-// 判断迟到
+// 判断迟到标记
 function isLate(hourStr, limitHour){
   if(!hourStr) return "";
   let h = parseInt(hourStr.split(":")[0]);
   return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
 }
 
-// 切换标签
+// 切换员工端标签
 function switchTab(pageId){
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
@@ -175,8 +243,8 @@ function switchTab(pageId){
   document.getElementById(pageId+"Page").classList.add("show");
 }
 
-// 登录
-function login(){
+// 员工账号登录
+function userLogin(){
   const un = document.getElementById("username").value.trim();
   const pw = document.getElementById("password").value.trim();
   if(userList[un] && userList[un].pwd === pw){
@@ -191,15 +259,48 @@ function login(){
   }
 }
 
-// 退出登录
+// 退出登录，回到登录页
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
   document.getElementById("loginPage").classList.remove("hide");
   document.getElementById("mainPage").classList.add("hide");
+  document.getElementById("adminPage").classList.add("hide");
 }
 
-// 打卡逻辑
+// 打开管理员登录弹窗
+function openAdminModal(){
+  document.getElementById("adminModal").classList.remove("hide");
+  document.getElementById("adminUser").value = "";
+  document.getElementById("adminPwd").value = "";
+}
+// 关闭管理员弹窗
+function closeAdminModal(){
+  document.getElementById("adminModal").classList.add("hide");
+}
+
+// 管理员身份校验登录，切换管理后台
+function adminLogin(){
+  const u = document.getElementById("adminUser").value.trim();
+  const p = document.getElementById("adminPwd").value.trim();
+  if(u === "admin" && p === "123456"){
+    closeAdminModal();
+    document.getElementById("mainPage").classList.add("hide");
+    document.getElementById("adminPage").classList.remove("hide");
+    renderAllRecord();
+  }else{
+    alert("管理员账号密码错误");
+  }
+}
+
+// 从管理后台返回员工打卡主页
+function backStaffPage(){
+  document.getElementById("adminPage").classList.add("hide");
+  document.getElementById("mainPage").classList.remove("hide");
+  renderRecord();
+}
+
+// 打卡核心逻辑
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   if(!currentLocation){
@@ -251,11 +352,16 @@ document.getElementById("clockBtn").onclick = function(){
     tip.innerText = "今日四段打卡全部完成";
   }
 
-  localStorage.setItem("clockData",JSON.stringify(clockRecord));
+  saveClockData();
   renderRecord();
 }
 
-// 渲染个人记录
+// 保存数据到本地存储
+function saveClockData(){
+  localStorage.setItem("clockData",JSON.stringify(clockRecord));
+}
+
+// 渲染当前员工个人记录
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
@@ -272,7 +378,74 @@ function renderRecord(){
   })
 }
 
-// 页面加载自动登录
+// 渲染管理员全部员工记录
+function renderAllRecord(){
+  clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+  const box = document.getElementById("allRecordBox");
+  box.innerHTML = "";
+  if(clockRecord.length === 0){
+    box.innerHTML = "<tr><td colspan='8'>暂无任何打卡记录</td></tr>";
+    return;
+  }
+  clockRecord.forEach((item,idx)=>{
+    box.innerHTML += `
+    <tr>
+      <td>${item.user}</td>
+      <td>${item.date}</td>
+      <td><input class="edit-input" value="${item.t1}" id="t1_${idx}"> ${isLate(item.t1,11)}</td>
+      <td><input class="edit-input" value="${item.t2}" id="t2_${idx}"> ${isLate(item.t2,16)}</td>
+      <td><input class="edit-input" value="${item.t3}" id="t3_${idx}"> ${isLate(item.t3,18)}</td>
+      <td><input class="edit-input" value="${item.off}" id="off_${idx}"></td>
+      <td>
+        <select id="audit_${idx}">
+          <option value="待审核" ${item.audit==="待审核"?"selected":""}>待审核</option>
+          <option value="已通过" ${item.audit==="已通过"?"selected":""}>已通过</option>
+          <option value="已驳回" ${item.audit==="已驳回"?"selected":""}>已驳回</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn-save" onclick="editRecord(${idx})">保存修改</button>
+        <button class="btn-del" onclick="delRecord(${idx})">删除</button>
+      </td>
+    </tr>
+    `;
+  })
+}
+
+// 管理员保存修改单条记录
+function editRecord(index){
+  const row = clockRecord[index];
+  row.t1 = document.getElementById(`t1_${index}`).value.trim();
+  row.t2 = document.getElementById(`t2_${index}`).value.trim();
+  row.t3 = document.getElementById(`t3_${index}`).value.trim();
+  row.off = document.getElementById(`off_${index}`).value.trim();
+  row.audit = document.getElementById(`audit_${index}`).value;
+  saveClockData();
+  renderAllRecord();
+  alert("修改已保存，员工页面实时同步");
+}
+
+// 管理员删除单条打卡记录
+function delRecord(index){
+  if(confirm("确认删除该员工当日全部打卡记录？")){
+    clockRecord.splice(index,1);
+    saveClockData();
+    renderAllRecord();
+  }
+}
+
+// 监听存储变化，其他页面修改自动刷新
+window.addEventListener("storage", function(){
+  clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+  if(!document.getElementById("mainPage").classList.contains("hide")){
+    renderRecord();
+  }
+  if(!document.getElementById("adminPage").classList.contains("hide")){
+    renderAllRecord();
+  }
+})
+
+// 页面加载自动免登录
 window.onload = function(){
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
@@ -282,11 +455,6 @@ window.onload = function(){
     getLocation();
     renderRecord();
   }
-  // 实时监听存储变化，管理员修改自动刷新页面
-  window.addEventListener("storage", function(){
-    clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
-    renderRecord();
-  })
 }
 </script>
 </body>
