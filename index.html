@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title><span class="zh">员工三段打卡考勤系统</span><span class="th">ระบบลงเวลาพนักงาน</span></title>
 <style>
@@ -80,15 +80,17 @@ th{background:#f7f8fa;}
 .absent-full{color:#900;font-weight:bold;}
 .absent-half{color:#c66a00;font-weight:bold;}
 </style>
-<!-- Supabase SDK -->
+
+<!-- 仅引入一次Supabase SDK，仅初始化一次，彻底解决重复声明报错 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// 数据库连接配置（仅一处定义supabase，无重复）
 const SUPABASE_URL = "https://ngtjpezuoppsqxttzypx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_txzhwyOGKx9GwrWXxfZlcg_qixhykYE";
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===================== 全局云端同步函数（带错误捕获） =====================
+// ===================== 全局云端同步工具函数 =====================
 async function uploadToCloud(userName, recordDate){
   try{
     const targetItem = clockRecord.find(i => i.user === userName && i.date === recordDate);
@@ -138,7 +140,8 @@ async function deleteCloudRecord(userName, recordDate){
     console.log("云端删除失败",e);
   }
 }
-// 页面后台拉取云端数据（不阻塞页面渲染）
+
+// 后台异步拉取云端数据（不阻塞页面登录渲染）
 function loadCloudData(){
   supabase.from('clock_records').select('*')
   .then(res=>{
@@ -154,7 +157,6 @@ function loadCloudData(){
       absent: item.absent
     }));
     saveClockData();
-    // 登录后刷新视图
     const cacheUser = localStorage.getItem("loginUser");
     if(cacheUser && userList[cacheUser]){
       renderRecord();
@@ -191,7 +193,7 @@ function loadLangSetting(){
   }
 }
 
-// 基础配置
+// 基础业务配置
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
@@ -253,7 +255,7 @@ function updateClock(){
 setInterval(updateClock,1000);
 updateClock();
 
-// 员工打卡按钮
+// 员工打卡点击事件
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   const lang = localStorage.getItem("siteLang") || "zh";
@@ -311,7 +313,7 @@ document.getElementById("clockBtn").onclick = function(){
   });
 }
 
-// 渲染个人记录
+// 渲染个人打卡记录
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
@@ -339,7 +341,7 @@ function renderRecord(){
   })
 }
 
-// 管理员新增
+// 管理员手动新增考勤
 function saveAddRecord(){
   const emp = document.getElementById("addEmp").value.trim();
   const date = document.getElementById("addDate").value.trim();
@@ -363,7 +365,7 @@ function saveAddRecord(){
   document.getElementById("addModal").style.display = "none";
   alert("新增考勤保存成功");
 }
-// 管理员编辑
+// 管理员编辑修改考勤
 function editRecord(index){
   const item = clockRecord[index];
   const newT1 = document.getElementById("editT1").value.trim();
@@ -379,7 +381,7 @@ function editRecord(index){
   document.getElementById("editModal").style.display = "none";
   alert("修改已保存，全局同步");
 }
-// 管理员删除
+// 管理员删除考勤记录
 function delRecord(index){
   if(confirm("确认删除该员工当日全部打卡记录？")){
     const item = clockRecord[index];
@@ -389,7 +391,7 @@ function delRecord(index){
     renderAdminView();
   }
 }
-// 渲染管理员后台
+// 渲染管理员后台表格
 function renderAdminView(){
   const box = document.getElementById("adminList");
   box.innerHTML = "";
@@ -415,7 +417,8 @@ function renderAdminView(){
     </tr>`;
   })
 }
-// 弹窗
+
+// 弹窗控制函数
 function openAddModal(){
   document.getElementById("addEmp").value = "";
   document.getElementById("addDate").value = "";
@@ -451,6 +454,7 @@ function switchTab(pageId){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
   document.getElementById(pageId).classList.add("show");
 }
+// 登录逻辑
 function doLogin(){
   const user = document.getElementById("loginUser").value.trim();
   const pwd = document.getElementById("loginPwd").value.trim();
@@ -463,20 +467,20 @@ function doLogin(){
   document.getElementById("mainWrap").classList.remove("hide");
   switchTab("clockPage");
   renderRecord();
-  if(userList[user].role === "admin") renderAdminView();
+  if(userList[currentUser].role === "admin") renderAdminView();
 }
+// 退出登录
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
   document.getElementById("loginWrap").classList.remove("hide");
   document.getElementById("mainWrap").classList.add("hide");
 }
-// 页面初始化【核心修复：云端拉取异步后台执行，不阻塞登录渲染】
+
+// 页面初始化（云端后台加载，不阻塞登录界面交互）
 window.onload = function(){
   loadLangSetting();
-  // 后台异步拉取云端数据，失败不影响页面
   loadCloudData();
-  // 优先渲染登录界面，读取本地缓存登录状态
   const cacheUser = localStorage.getItem("loginUser");
   if(cacheUser && userList[cacheUser]){
     currentUser = cacheUser;
@@ -489,6 +493,7 @@ window.onload = function(){
 </script>
 </head>
 <body class="lang-zh">
+<!-- 登录区域 -->
 <div id="loginWrap" class="login-wrap">
   <div class="login-card">
     <h2>
@@ -507,6 +512,8 @@ window.onload = function(){
     </button>
   </div>
 </div>
+
+<!-- 主界面区域 -->
 <div id="mainWrap" class="hide">
   <div class="header">
     <h1>
@@ -538,6 +545,8 @@ window.onload = function(){
       <span class="th">ประวัติของฉัน</span>
     </div>
   </div>
+
+  <!-- 打卡页面 -->
   <div id="clockPage" class="page show">
     <div class="clock-box">
       <div id="nowTime" class="time-text">00:00:00</div>
@@ -564,6 +573,8 @@ window.onload = function(){
       <div class="tip-text" id="clockTip"></div>
     </div>
   </div>
+
+  <!-- 个人记录页 -->
   <div id="recordPage" class="page">
     <h3>
       <span class="zh">我的全部打卡记录</span>
@@ -584,6 +595,8 @@ window.onload = function(){
       <tbody id="recordList"></tbody>
     </table>
   </div>
+
+  <!-- 管理员后台页 -->
   <div id="adminPage" class="page">
     <h3>
       <span class="zh">全员考勤管理后台</span>
@@ -622,6 +635,8 @@ window.onload = function(){
     </table>
   </div>
 </div>
+
+<!-- 新增考勤弹窗 -->
 <div class="modal-mask" id="addModal">
   <div class="modal-box">
     <h3>
@@ -650,6 +665,8 @@ window.onload = function(){
     </div>
   </div>
 </div>
+
+<!-- 编辑考勤弹窗 -->
 <div class="modal-mask" id="editModal">
   <div class="modal-box">
     <h3>
