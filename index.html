@@ -9,46 +9,35 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system, BlinkMacSystemFont, "Microsoft YaHei";}
 body{background:#f4f5f7;padding-bottom:40px;}
-/* 多语言控制 */
 .zh{display:block;}
 .th{display:none;}
 body.lang-zh .zh{display:block;}
 body.lang-zh .th{display:none;}
 body.lang-th .zh{display:none;}
 body.lang-th .th{display:block;}
-/* 语言切换按钮 */
 .lang-btn{background:#fff;color:#2d8cf0;border:none;padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;}
-/* 登录页 */
 .login-wrap{padding:60px 20px;}
 .login-card{background:#fff;border-radius:16px;padding:30px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);max-width:420px;margin:0 auto;}
 .login-card h2{text-align:center;color:#2d8cf0;margin-bottom:30px;font-size:22px;}
 .input-box{margin-bottom:18px;}
 .input-box input{width:100%;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none;}
 .btn{width:100%;padding:15px;background:#2d8cf0;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:500;cursor:pointer;}
-/* 顶部头部 */
 .header{background:#2d8cf0;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
 .header h1{font-size:18px;}
 .header-buttons{display:flex;gap:10px;align-items:center;}
 .logout-btn{background:#fff;color:#2d8cf0;border:none;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer;}
-/* 管理员入口：仅电脑可见，手机隐藏 */
 .admin-enter-btn{background:#ff7d00;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer;}
-@media (max-width:768px){
-  .admin-enter-btn{display:none !important;}
-}
-/* 标签栏 */
+@media (max-width:768px){.admin-enter-btn{display:none !important;}}
 .tab-bar{display:flex;background:#fff;margin:15px 15px;border-radius:12px;overflow:hidden;}
 .tab{flex:1;text-align:center;padding:14px 0;font-size:15px;color:#666;cursor:pointer;}
 .tab.active{background:#2d8cf0;color:#fff;}
-/* 页面容器 */
 .page{margin:0 15px;background:#fff;border-radius:16px;padding:25px;display:none;}
 .page.show{display:block;}
-/* 打卡页 */
 .clock-box{text-align:center;}
 .time-text{font-size:42px;color:#2d8cf0;margin:20px 0;font-weight:500;}
 .location-tip{font-size:14px;color:#666;margin-bottom:20px;line-height:1.6;}
 .tip-text{margin-top:16px;font-size:15px;line-height:1.7;}
 .clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;cursor:pointer;}
-/* 表格通用 */
 table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px;}
 th,td{border:1px solid #eee;padding:10px 4px;text-align:center;}
 th{background:#f7f8fa;}
@@ -57,7 +46,6 @@ th{background:#f7f8fa;}
 .btn-save{background:#19be6b;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
 .btn-del{background:#f56c6c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
 .btn-add{background:#409EFF;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;margin-bottom:10px;}
-/* 弹窗样式 */
 .modal-mask{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;display:none;}
 .modal-box{background:#fff;width:90%;max-width:420px;padding:30px;border-radius:14px;max-height:90vh;overflow-y:auto;}
 .modal-box h3{text-align:center;margin-bottom:20px;color:#222;}
@@ -66,7 +54,6 @@ th{background:#f7f8fa;}
 .modal-btn-group{display:flex;gap:10px;margin-top:20px;}
 .modal-confirm{flex:1;padding:12px;background:#2d8cf0;color:#fff;border:none;border-radius:8px;cursor:pointer;}
 .modal-cancel{flex:1;padding:12px;background:#999;color:#fff;border:none;border-radius:8px;cursor:pointer;}
-/* 工具类 */
 .hide{display:none !important;}
 .late{color:#f56c6c;font-weight:bold;}
 .normal{color:#19be6b;}
@@ -81,119 +68,53 @@ th{background:#f7f8fa;}
 .absent-half{color:#c66a00;font-weight:bold;}
 </style>
 
-<!-- 仅引入一次Supabase SDK，仅初始化一次，彻底解决重复声明报错 -->
+<!-- 仅加载一次SDK，仅创建一次supabase实例，无重复 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// 数据库连接配置（仅一处定义supabase，无重复）
 const SUPABASE_URL = "https://ngtjpezuoppsqxttzypx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_txzhwyOGKx9GwrWXxfZlcg_qixhykYE";
 const { createClient } = supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===================== 全局云端同步工具函数 =====================
 async function uploadToCloud(userName, recordDate){
   try{
     const targetItem = clockRecord.find(i => i.user === userName && i.date === recordDate);
     if(!targetItem) return;
-    const { data } = await supabase
-      .from('clock_records')
-      .select('id')
-      .eq('user_name', userName)
-      .eq('record_date', recordDate);
+    const { data } = await supabase.from('clock_records').select('id').eq('user_name', userName).eq('record_date', recordDate);
     if(data.length > 0){
-      await supabase
-        .from('clock_records')
-        .update({
-          t1: targetItem.t1,
-          t2: targetItem.t2,
-          t3: targetItem.t3,
-          off: targetItem.off,
-          absent: targetItem.absent,
-          audit: targetItem.audit
-        })
-        .eq('user_name', userName)
-        .eq('record_date', recordDate);
+      await supabase.from('clock_records').update({
+        t1: targetItem.t1, t2: targetItem.t2, t3: targetItem.t3, off: targetItem.off, absent: targetItem.absent, audit: targetItem.audit
+      }).eq('user_name', userName).eq('record_date', recordDate);
     }else{
       await supabase.from('clock_records').insert([{
-        user_name: userName,
-        record_date: recordDate,
-        t1: targetItem.t1,
-        t2: targetItem.t2,
-        t3: targetItem.t3,
-        off: targetItem.off,
-        absent: targetItem.absent,
-        audit: targetItem.audit
+        user_name: userName, record_date: recordDate, t1: targetItem.t1, t2: targetItem.t2, t3: targetItem.t3, off: targetItem.off, absent: targetItem.absent, audit: targetItem.audit
       }]);
     }
-  }catch(e){
-    console.log("云端上传失败，仅本地保存",e);
-  }
+  }catch(e){console.log("云端上传失败",e);}
 }
 async function deleteCloudRecord(userName, recordDate){
-  try{
-    await supabase
-      .from('clock_records')
-      .delete()
-      .eq('user_name', userName)
-      .eq('record_date', recordDate);
-  }catch(e){
-    console.log("云端删除失败",e);
-  }
+  try{await supabase.from('clock_records').delete().eq('user_name', userName).eq('record_date', recordDate);}catch(e){console.log("云端删除失败",e);}
 }
-
-// 后台异步拉取云端数据（不阻塞页面登录渲染）
 function loadCloudData(){
-  supabase.from('clock_records').select('*')
-  .then(res=>{
+  supabase.from('clock_records').select('*').then(res=>{
     if(res.error) throw res.error;
-    clockRecord = res.data.map(item => ({
-      user: item.user_name,
-      date: item.record_date,
-      t1: item.t1,
-      t2: item.t2,
-      t3: item.t3,
-      off: item.off,
-      audit: item.audit,
-      absent: item.absent
-    }));
+    clockRecord = res.data.map(item=>({user:item.user_name,date:item.record_date,t1:item.t1,t2:item.t2,t3:item.t3,off:item.off,audit:item.audit,absent:item.absent}));
     saveClockData();
     const cacheUser = localStorage.getItem("loginUser");
-    if(cacheUser && userList[cacheUser]){
-      renderRecord();
-      if(userList[cacheUser].role === "admin") renderAdminView();
-    }
-  })
-  .catch(err=>{
-    console.log("云端加载失败，使用本地缓存",err);
-  })
+    if(cacheUser && userList[cacheUser]){renderRecord();if(userList[cacheUser].role === "admin") renderAdminView();}
+  }).catch(err=>{console.log("云端加载失败，使用本地缓存",err);})
 }
-
-// 双语切换
 function toggleLang(){
   const body = document.body;
-  if(body.classList.contains("lang-zh")){
-    body.classList.remove("lang-zh");
-    body.classList.add("lang-th");
-    localStorage.setItem("siteLang","th");
-  }else{
-    body.classList.remove("lang-th");
-    body.classList.add("lang-zh");
-    localStorage.setItem("siteLang","zh");
-  }
+  if(body.classList.contains("lang-zh")){body.classList.remove("lang-zh");body.classList.add("lang-th");localStorage.setItem("siteLang","th");}
+  else{body.classList.remove("lang-th");body.classList.add("lang-zh");localStorage.setItem("siteLang","zh");}
 }
 function loadLangSetting(){
   const saveLang = localStorage.getItem("siteLang") || "zh";
   const body = document.body;
-  if(saveLang === "th"){
-    body.classList.remove("lang-zh");
-    body.classList.add("lang-th");
-  }else{
-    body.classList.remove("lang-th");
-    body.classList.add("lang-zh");
-  }
+  if(saveLang === "th"){body.classList.remove("lang-zh");body.classList.add("lang-th");}
+  else{body.classList.remove("lang-th");body.classList.add("lang-zh");}
 }
-
-// 基础业务配置
 const COMPANY_LAT = 18.691944;
 const COMPANY_LNG = 98.939444;
 const ALLOW_RANGE = 100;
@@ -210,7 +131,6 @@ const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
 let currentUser = null;
 let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
 let adminViewType = "user";
-
 function timeToMin(h,m){return h*60 + m;}
 function getCurrentClockStep(){
   const now = new Date();
@@ -255,7 +175,6 @@ function updateClock(){
 setInterval(updateClock,1000);
 updateClock();
 
-// 员工打卡点击事件
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   const lang = localStorage.getItem("siteLang") || "zh";
@@ -278,10 +197,7 @@ document.getElementById("clockBtn").onclick = function(){
     const dateStr = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,"0")}/${String(now.getDate()).padStart(2,"0")}`;
     const timeStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
     let dayData = clockRecord.find(i=>i.user===currentUser && i.date===dateStr);
-    if(!dayData){
-      dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};
-      clockRecord.push(dayData);
-    }
+    if(!dayData){dayData = {user:currentUser,date:dateStr,t1:"",t2:"",t3:"",off:"",audit:"待审核",absent:""};clockRecord.push(dayData);}
     let hasExist = false,tipZh="",tipTh="";
     if(step === 1){
       if(dayData.t1){hasExist=true;tipZh="今日早打卡已完成，不可重复打卡";tipTh="ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";}
@@ -299,10 +215,7 @@ document.getElementById("clockBtn").onclick = function(){
         else {tipZh=`正常下班签退完成 ${timeStr}`;tipTh=`ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;}
       }
     }
-    if(hasExist){
-      tip.innerHTML = `<span class="warn"><span class="zh">${tipZh}</span><span class="th">${tipTh}</span></span>`;
-      return;
-    }
+    if(hasExist){tip.innerHTML = `<span class="warn"><span class="zh">${tipZh}</span><span class="th">${tipTh}</span></span>`;return;}
     saveClockData();
     renderRecord();
     uploadToCloud(currentUser, dateStr);
@@ -312,8 +225,6 @@ document.getElementById("clockBtn").onclick = function(){
     tip.innerHTML = `<span class="warn"><span class="zh">获取定位失败，请开启定位权限</span><span class="th">ไม่สามารถรับตำแหน่งได้ กรุณาเปิดสิทธิ์ตำแหน่ง</span></span>`;
   });
 }
-
-// 渲染个人打卡记录
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
@@ -340,8 +251,6 @@ function renderRecord(){
     </tr>`;
   })
 }
-
-// 管理员手动新增考勤
 function saveAddRecord(){
   const emp = document.getElementById("addEmp").value.trim();
   const date = document.getElementById("addDate").value.trim();
@@ -353,19 +262,14 @@ function saveAddRecord(){
   const absent = document.getElementById("addAbsent").value;
   if(!emp || !date){alert("员工与日期不能为空");return;}
   let target = clockRecord.find(i=>i.user===emp && i.date===date);
-  if(!target){
-    target = {user:emp,date,t1,t2,t3,off,audit,absent};
-    clockRecord.push(target);
-  }else{
-    target.t1 = t1; target.t2 = t2; target.t3 = t3; target.off = off; target.audit = audit; target.absent = absent;
-  }
+  if(!target){target = {user:emp,date,t1,t2,t3,off,audit,absent};clockRecord.push(target);}
+  else{target.t1 = t1; target.t2 = t2; target.t3 = t3; target.off = off; target.audit = audit; target.absent = absent;}
   saveClockData();
   renderAdminView();
   uploadToCloud(emp, date);
   document.getElementById("addModal").style.display = "none";
   alert("新增考勤保存成功");
 }
-// 管理员编辑修改考勤
 function editRecord(index){
   const item = clockRecord[index];
   const newT1 = document.getElementById("editT1").value.trim();
@@ -381,7 +285,6 @@ function editRecord(index){
   document.getElementById("editModal").style.display = "none";
   alert("修改已保存，全局同步");
 }
-// 管理员删除考勤记录
 function delRecord(index){
   if(confirm("确认删除该员工当日全部打卡记录？")){
     const item = clockRecord[index];
@@ -391,7 +294,6 @@ function delRecord(index){
     renderAdminView();
   }
 }
-// 渲染管理员后台表格
 function renderAdminView(){
   const box = document.getElementById("adminList");
   box.innerHTML = "";
@@ -417,8 +319,6 @@ function renderAdminView(){
     </tr>`;
   })
 }
-
-// 弹窗控制函数
 function openAddModal(){
   document.getElementById("addEmp").value = "";
   document.getElementById("addDate").value = "";
@@ -454,7 +354,6 @@ function switchTab(pageId){
   document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
   document.getElementById(pageId).classList.add("show");
 }
-// 登录逻辑
 function doLogin(){
   const user = document.getElementById("loginUser").value.trim();
   const pwd = document.getElementById("loginPwd").value.trim();
@@ -469,15 +368,12 @@ function doLogin(){
   renderRecord();
   if(userList[currentUser].role === "admin") renderAdminView();
 }
-// 退出登录
 function logout(){
   currentUser = null;
   localStorage.removeItem("loginUser");
   document.getElementById("loginWrap").classList.remove("hide");
   document.getElementById("mainWrap").classList.add("hide");
 }
-
-// 页面初始化（云端后台加载，不阻塞登录界面交互）
 window.onload = function(){
   loadLangSetting();
   loadCloudData();
@@ -493,7 +389,6 @@ window.onload = function(){
 </script>
 </head>
 <body class="lang-zh">
-<!-- 登录区域 -->
 <div id="loginWrap" class="login-wrap">
   <div class="login-card">
     <h2>
@@ -512,8 +407,6 @@ window.onload = function(){
     </button>
   </div>
 </div>
-
-<!-- 主界面区域 -->
 <div id="mainWrap" class="hide">
   <div class="header">
     <h1>
@@ -545,8 +438,6 @@ window.onload = function(){
       <span class="th">ประวัติของฉัน</span>
     </div>
   </div>
-
-  <!-- 打卡页面 -->
   <div id="clockPage" class="page show">
     <div class="clock-box">
       <div id="nowTime" class="time-text">00:00:00</div>
@@ -573,8 +464,6 @@ window.onload = function(){
       <div class="tip-text" id="clockTip"></div>
     </div>
   </div>
-
-  <!-- 个人记录页 -->
   <div id="recordPage" class="page">
     <h3>
       <span class="zh">我的全部打卡记录</span>
@@ -595,8 +484,6 @@ window.onload = function(){
       <tbody id="recordList"></tbody>
     </table>
   </div>
-
-  <!-- 管理员后台页 -->
   <div id="adminPage" class="page">
     <h3>
       <span class="zh">全员考勤管理后台</span>
@@ -635,8 +522,6 @@ window.onload = function(){
     </table>
   </div>
 </div>
-
-<!-- 新增考勤弹窗 -->
 <div class="modal-mask" id="addModal">
   <div class="modal-box">
     <h3>
@@ -665,8 +550,6 @@ window.onload = function(){
     </div>
   </div>
 </div>
-
-<!-- 编辑考勤弹窗 -->
 <div class="modal-mask" id="editModal">
   <div class="modal-box">
     <h3>
