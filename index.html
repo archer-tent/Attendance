@@ -72,6 +72,7 @@ th{background:#f7f8fa;}
 .normal{color:#19be6b;}
 .absent-full{color:#900;font-weight:bold;}
 .absent-half{color:#c66a00;font-weight:bold;}
+.miss-clock{color:#888;font-style:italic;}
 .full-attend{color:#008833;font-weight:bold;background:#e8fff0;padding:2px 6px;border-radius:4px;}
 .admin-tab-switch{display:flex;gap:10px;margin:10px 0;}
 .admin-tab-switch button{padding:6px 12px;border:none;border-radius:6px;cursor:pointer;}
@@ -86,11 +87,11 @@ th{background:#f7f8fa;}
 <div id="loginPage" class="login-wrap">
   <div class="login-card">
     <h2>
-      <span class="zh">考勤系统</span>
+      <span class="zh">三段打卡考勤系统</span>
       <span class="th">ระบบลงเวลาพนักงาน</span>
     </h2>
     <div class="input-box">
-      <input type="text" id="username" placeholder="账号：FANG / AMP / PA / TANG / KAN / AUM ">
+      <input type="text" id="username" placeholder="账号：FANG / AMP / PA / TANG / KAN / AUM / admin">
     </div>
     <div class="input-box">
       <input type="password" id="password" placeholder="密码统一：123456">
@@ -146,19 +147,19 @@ th{background:#f7f8fa;}
       <div class="tip-text">
         <span class="zh">
         打卡时段规则：<br>
-        ①早打卡：10:30 ~ 11:30（11点后迟到）<br>
-        ②中打卡：15:30 ~ 16:30（16点后迟到）<br>
-        ③晚打卡：17:30 ~ 18:30（18点后迟到）<br>
-        ④下班/加班：21:00 ~ 23:00（21:30后算加班）<br>
-        禁止打卡：11:31-15:29 / 18:31-20:59 / 23:01-次日10:29
+        ①早打卡窗口：10:30 ~ 11:30（11点后迟到）<br>
+        ②中打卡窗口：15:30 ~ 16:30（16点后迟到）<br>
+        ③晚打卡窗口：17:30 ~ 18:30（18点后迟到）<br>
+        ④下班/加班窗口：21:00 ~ 23:00（21:30后算加班）<br>
+        说明：任意时段窗口均可直接打卡，无需按顺序；未打卡时段记为缺卡缺勤
         </span>
         <span class="th">
         กฎช่วงเวลาลงเวลา:<br>
-        ① ลงเช้า: 10:30 - 11:30 (หลัง 11 โมงถือว่าสาย)<br>
-        ② ลงกลางวัน: 15:30 - 16:30 (หลัง 16 โมงถือว่าสาย)<br>
-        ③ ลงเย็น: 17:30 - 18:30 (หลัง 18 โมงถือว่าสาย)<br>
+        ① ช่วงลงเช้า: 10:30 - 11:30 (หลัง 11 โมงถือว่าสาย)<br>
+        ② ช่วงลงกลางวัน: 15:30 - 16:30 (หลัง 16 โมงถือว่าสาย)<br>
+        ③ ช่วงลงเย็น: 17:30 - 18:30 (หลัง 18 โมงถือว่าสาย)<br>
         ④ เลิกงาน/โอที: 21:00 - 23:00 (หลัง 21:30 นับเป็นโอที)<br>
-        ห้ามลงเวลา: 11:31-15:29 / 18:31-20:59 / 23:01 ถึง 10:29 ของวันรุ่งขึ้น
+        หมายเหตุ: สามารถลงเวลาช่วงไหนก็ได้ ไม่ต้องลงตามลำดับ ช่วงไหนไม่ลงจะนับว่าขาดลงเวลา
         </span>
       </div>
       <button class="clock-submit" id="clockBtn">
@@ -269,7 +270,7 @@ const userList = {
   TANG:{pwd:"123456",role:"user"},
   KAN:{pwd:"123456",role:"user"},
   AUM:{pwd:"123456",role:"user"},
-  admin:{pwd:"164315",role:"admin"}
+  admin:{pwd:"123456",role:"admin"}
 };
 const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
 let currentUser = null;
@@ -320,23 +321,17 @@ function fmtDate(d){
 function timeToMin(h, m){
   return h * 60 + m;
 }
-// 判断当前时间是否在对应打卡窗口
-function canClockNow(step){
+// 判断当前时间属于哪一个打卡时段（返回1/2/3/4，不在窗口返回0）
+function getCurrentClockStep(){
   const now = new Date();
   const h = now.getHours();
   const m = now.getMinutes();
   const curMin = timeToMin(h, m);
-  switch(step){
-    case 1: // 早 10:30 - 11:30
-      return curMin >= timeToMin(10,30) && curMin <= timeToMin(11,30);
-    case 2: // 中 15:30 - 16:30
-      return curMin >= timeToMin(15,30) && curMin <= timeToMin(16,30);
-    case 3: // 晚 17:30 - 18:30
-      return curMin >= timeToMin(17,30) && curMin <= timeToMin(18,30);
-    case 4: // 下班21:00 -23:00
-      return curMin >= timeToMin(21,0) && curMin <= timeToMin(23,0);
-  }
-  return false;
+  if(curMin >= timeToMin(10,30) && curMin <= timeToMin(11,30)) return 1;
+  if(curMin >= timeToMin(15,30) && curMin <= timeToMin(16,30)) return 2;
+  if(curMin >= timeToMin(17,30) && curMin <= timeToMin(18,30)) return 3;
+  if(curMin >= timeToMin(21,0) && curMin <= timeToMin(23,0)) return 4;
+  return 0;
 }
 // 迟到标记双语
 function isLate(hourStr, limitHour){
@@ -478,7 +473,7 @@ function switchAdminView(type){
   document.getElementById("viewByDate").classList.toggle("hide",type!=="date");
   renderAdminView();
 }
-// 打卡核心逻辑（新增时段限制）
+// 打卡核心逻辑【重点修改：取消顺序限制，当前窗口直接写入对应字段】
 document.getElementById("clockBtn").onclick = function(){
   const tip = document.getElementById("clockTip");
   const lang = localStorage.getItem("siteLang") || "zh";
@@ -498,6 +493,14 @@ document.getElementById("clockBtn").onclick = function(){
   const dateStr = fmtDate(now);
   const timeStr = now.toLocaleTimeString();
   const hour = now.getHours();
+  const step = getCurrentClockStep();
+
+  // 当前不在任何打卡窗口，直接拦截
+  if(step === 0){
+    if(lang === "zh") tip.innerHTML = `<span class="warn">当前不在任何打卡时段窗口，无法打卡</span>`;
+    else tip.innerHTML = `<span class="warn">ขณะนี้ไม่อยู่ช่วงลงเวลาใดๆ ห้ามลงเวลา</span>`;
+    return;
+  }
 
   let dayData = clockRecord.find(item=>item.user===currentUser && item.date===dateStr);
   if(!dayData){
@@ -505,53 +508,69 @@ document.getElementById("clockBtn").onclick = function(){
     clockRecord.push(dayData);
   }
 
-  // 分段判断打卡窗口
-  if(!dayData.t1){
-    if(!canClockNow(1)){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">不在早打卡时段（10:30-11:30），禁止打卡</span>`;
-      else tip.innerHTML = `<span class="warn">ไม่อยู่ช่วงลงเช้า (10:30-11:30) ห้ามลงเวลา</span>`;
-      return;
-    }
-    dayData.t1 = timeStr;
-    tip.innerHTML = `<span class="zh">第一段打卡成功 ${timeStr}</span><span class="th">ลงเวลาเช้าสำเร็จ ${timeStr}</span> ${isLate(timeStr,11)}`;
-  }else if(!dayData.t2){
-    if(!canClockNow(2)){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">不在中打卡时段（15:30-16:30），禁止打卡</span>`;
-      else tip.innerHTML = `<span class="warn">ไม่อยู่ช่วงลงกลางวัน (15:30-16:30) ห้ามลงเวลา</span>`;
-      return;
-    }
-    dayData.t2 = timeStr;
-    tip.innerHTML = `<span class="zh">第二段打卡成功 ${timeStr}</span><span class="th">ลงเวลากลางวันสำเร็จ ${timeStr}</span> ${isLate(timeStr,16)}`;
-  }else if(!dayData.t3){
-    if(!canClockNow(3)){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">不在晚打卡时段（17:30-18:30），禁止打卡</span>`;
-      else tip.innerHTML = `<span class="warn">ไม่อยู่ช่วงลงเย็น (17:30-18:30) ห้ามลงเวลา</span>`;
-      return;
-    }
-    dayData.t3 = timeStr;
-    tip.innerHTML = `<span class="zh">第三段打卡成功 ${timeStr}</span><span class="th">ลงเวลาเย็นสำเร็จ ${timeStr}</span> ${isLate(timeStr,18)}`;
-  }else if(!dayData.off){
-    if(!canClockNow(4)){
-      if(lang === "zh") tip.innerHTML = `<span class="warn">不在下班打卡时段（21:00-23:00），禁止打卡</span>`;
-      else tip.innerHTML = `<span class="warn">ไม่อยู่ช่วงลงเลิกงาน (21:00-23:00) ห้ามลงเวลา</span>`;
-      return;
-    }
-    if(hour >= 21 && now.getMinutes() > 30){
-      tip.innerHTML = `<span class="zh">加班签退完成 ${timeStr}</span><span class="th">ลงเวลาโอทีสำเร็จ ${timeStr}</span>`;
+  // 根据当前时段直接写入对应字段，不判断前面时段是否已打卡
+  let hasExist = false;
+  let tipTextZh = "";
+  let tipTextTh = "";
+  if(step === 1){
+    if(dayData.t1){
+      hasExist = true;
+      tipTextZh = "今日早打卡已完成，不可重复打卡";
+      tipTextTh = "ลงเวลาเช้าของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
     }else{
-      tip.innerHTML = `<span class="zh">正常下班签退完成 ${timeStr}</span><span class="th">ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}</span>`;
+      dayData.t1 = timeStr;
+      tipTextZh = `早打卡成功 ${timeStr}`;
+      tipTextTh = `ลงเวลาเช้าสำเร็จ ${timeStr}`;
     }
-    dayData.off = timeStr;
-  }else{
-    if(lang === "zh") tip.innerHTML = `<span class="warn">今日四段打卡全部完成，无需重复打卡</span>`;
-    else tip.innerHTML = `<span class="warn">ลงเวลาครบทั้ง 4 ช่วงของวันนี้แล้ว ไม่ต้องลงซ้ำ</span>`;
+  }else if(step === 2){
+    if(dayData.t2){
+      hasExist = true;
+      tipTextZh = "今日中打卡已完成，不可重复打卡";
+      tipTextTh = "ลงเวลากลางวันของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+    }else{
+      dayData.t2 = timeStr;
+      tipTextZh = `中打卡成功 ${timeStr}`;
+      tipTextTh = `ลงเวลากลางวันสำเร็จ ${timeStr}`;
+    }
+  }else if(step === 3){
+    if(dayData.t3){
+      hasExist = true;
+      tipTextZh = "今日晚打卡已完成，不可重复打卡";
+      tipTextTh = "ลงเวลาเย็นของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+    }else{
+      dayData.t3 = timeStr;
+      tipTextZh = `晚打卡成功 ${timeStr}`;
+      tipTextTh = `ลงเวลาเย็นสำเร็จ ${timeStr}`;
+    }
+  }else if(step === 4){
+    if(dayData.off){
+      hasExist = true;
+      tipTextZh = "今日下班打卡已完成，不可重复打卡";
+      tipTextTh = "ลงเวลาเลิกงานของวันนี้เสร็จแล้ว ห้ามลงซ้ำ";
+    }else{
+      dayData.off = timeStr;
+      if(hour >= 21 && now.getMinutes() > 30){
+        tipTextZh = `加班签退完成 ${timeStr}`;
+        tipTextTh = `ลงเวลาโอทีสำเร็จ ${timeStr}`;
+      }else{
+        tipTextZh = `正常下班签退完成 ${timeStr}`;
+        tipTextTh = `ลงเวลาเลิกงานปกติสำเร็จ ${timeStr}`;
+      }
+    }
+  }
+
+  if(hasExist){
+    tip.innerHTML = `<span class="warn"><span class="zh">${tipTextZh}</span><span class="th">${tipTextTh}</span></span>`;
     return;
   }
-  saveClockData();renderRecord();
+
+  tip.innerHTML = `<span class="zh">${tipTextZh}</span><span class="th">${tipTextTh}</span> ${isLate(timeStr,step===1?11:step===2?16:18)}`;
+  saveClockData();
+  renderRecord();
 }
 // 保存数据
 function saveClockData(){localStorage.setItem("clockData",JSON.stringify(clockRecord));clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];}
-// 员工个人记录渲染（双语）
+// 员工个人记录渲染（双语，缺卡显示缺卡）
 function renderRecord(){
   const box = document.getElementById("recordList");
   box.innerHTML = "";
@@ -566,6 +585,13 @@ function renderRecord(){
       absentText = `<span class='absent-half'><span class="zh">半日旷工</span><span class="th">ขาดงานครึ่งวัน</span></span>`;
     }
     let normalText = `<span class="zh">正常出勤</span><span class="th">มาทำงานปกติ</span>`;
+    // 缺卡占位文字
+    const missZh = "<span class='miss-clock'>缺卡</span>";
+    const missTh = "<span class='miss-clock'>ขาดลงเวลา</span>";
+    const t1Show = item.t1 ? `${item.t1} ${isLate(item.t1,11)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
+    const t2Show = item.t2 ? `${item.t2} ${isLate(item.t2,16)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
+    const t3Show = item.t3 ? `${item.t3} ${isLate(item.t3,18)}` : `<span class="zh">${missZh}</span><span class="th">${missTh}</span>`;
+    const offShow = item.off || "-";
     // 审核文字转换
     let auditText = "";
     if(item.audit === "待审核") auditText = lang==="zh"?"待审核":"รอตรวจสอบ";
@@ -574,10 +600,10 @@ function renderRecord(){
 
     box.innerHTML += `<tr>
       <td>${item.date}</td>
-      <td>${item.t1||"-"} ${isLate(item.t1,11)}</td>
-      <td>${item.t2||"-"} ${isLate(item.t2,16)}</td>
-      <td>${item.t3||"-"} ${isLate(item.t3,18)}</td>
-      <td>${item.off||"-"}</td>
+      <td>${t1Show}</td>
+      <td>${t2Show}</td>
+      <td>${t3Show}</td>
+      <td>${offShow}</td>
       <td>${absentText||normalText}</td>
       <td>${auditText}</td>
     </tr>`;
