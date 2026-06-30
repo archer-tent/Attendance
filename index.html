@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>员工三段打卡考勤系统</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system, BlinkMacSystemFont, "Microsoft YaHei";}
+body{background:#f4f5f7;padding-bottom:40px;}
+.login-wrap{padding:60px 20px;}
+.login-card{background:#fff;border-radius:16px;padding:30px 20px;box-shadow:0 2px 12px rgba(0,0,0,0.08);}
+.login-card h2{text-align:center;color:#2d8cf0;margin-bottom:30px;font-size:22px;}
+.input-box{margin-bottom:18px;}
+.input-box input{width:100%;padding:14px 16px;border:1px solid #e5e7eb;border-radius:12px;font-size:16px;outline:none;}
+.btn{width:100%;padding:15px;background:#2d8cf0;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:500;}
+.header{background:#2d8cf0;color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;}
+.header h1{font-size:18px;}
+.logout-btn{background:#fff;color:#2d8cf0;border:none;padding:6px 12px;border-radius:8px;font-size:14px;}
+.tab-bar{display:flex;background:#fff;margin:15px 15px;border-radius:12px;overflow:hidden;}
+.tab{flex:1;text-align:center;padding:14px 0;font-size:15px;color:#666;}
+.tab.active{background:#2d8cf0;color:#fff;}
+.page{margin:0 15px;background:#fff;border-radius:16px;padding:25px;display:none;}
+.page.show{display:block;}
+.clock-box{text-align:center;}
+.time-text{font-size:42px;color:#2d8cf0;margin:20px 0;font-weight:500;}
+.location-tip{font-size:14px;color:#666;margin-bottom:20px;line-height:1.6;}
+.clock-submit{padding:18px 50px;background:#19be6b;color:#fff;border:none;border-radius:99px;font-size:18px;margin-top:10px;}
+.tip-text{margin-top:16px;font-size:15px;line-height:1.7;}
+table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px;}
+th,td{border:1px solid #eee;padding:10px 4px;text-align:center;}
+th{background:#f7f8fa;}
+.agree{color:#19be6b;margin-right:8px;}
+.refuse{color:#f56c6c;}
+.hide{display:none !important;}
+.late{color:#f56c6c;font-weight:bold;}
+.normal{color:#19be6b;}
+</style>
+</head>
+<body>
+<div id="loginPage" class="login-wrap">
+  <div class="login-card">
+    <h2>三段打卡考勤系统</h2>
+    <div class="input-box">
+      <input type="text" id="username" placeholder="账号：emp1 / emp2 / emp3 / emp4 / emp5 / emp6 / admin">
+    </div>
+    <div class="input-box">
+      <input type="password" id="password" placeholder="密码统一：123456">
+    </div>
+    <button class="btn" onclick="login()">登录打卡</button>
+  </div>
+</div>
+
+<div id="mainPage" class="hide">
+  <div class="header">
+    <h1>手机考勤打卡</h1>
+    <button class="logout-btn" onclick="logout()">退出</button>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('clock')">打卡</div>
+    <div class="tab" onclick="switchTab('record')">我的记录</div>
+    <div class="tab admin-show" onclick="switchTab('audit')">考勤审核</div>
+  </div>
+
+  <div id="clockPage" class="page show">
+    <div class="clock-box">
+      <div id="nowTime" class="time-text">00:00:00</div>
+      <div class="location-tip" id="locTip">正在获取定位...</div>
+      <div class="tip-text">
+        打卡规则：<br>
+        1.早班：11:00前正常，11点后迟到<br>
+        2.中班：16:00前正常，16点后迟到<br>
+        3.晚班：18:00前正常，18点后迟到<br>
+        4.下班：21:00前完成签退
+      </div>
+      <button class="clock-submit" id="clockBtn">立即打卡</button>
+      <div class="tip-text" id="clockTip"></div>
+    </div>
+  </div>
+
+  <div id="recordPage" class="page">
+    <h3>我的打卡记录</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>日期</th>
+          <th>早打卡</th>
+          <th>中打卡</th>
+          <th>晚打卡</th>
+          <th>下班</th>
+          <th>审核状态</th>
+        </tr>
+      </thead>
+      <tbody id="recordList"></tbody>
+    </table>
+  </div>
+
+  <div id="auditPage" class="page">
+    <h3>全员考勤审核</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>员工</th>
+          <th>日期</th>
+          <th>早/中/晚/下班</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="auditList"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ========== 配置区 ==========
+const COMPANY_LAT = 18.4131;
+const COMPANY_LNG = 98.5621;
+const ALLOW_RANGE = 100;
+
+// 6个员工账号 + 管理员，密码全部123456
+const userList = {
+  emp1:{pwd:"123456",role:"PA"},
+  emp2:{pwd:"123456",role:"AUM"},
+  emp3:{pwd:"123456",role:"TANG"},
+  emp4:{pwd:"123456",role:"FANG"},
+  emp5:{pwd:"123456",role:"AMP"},
+  emp6:{pwd:"123456",role:"KAN"},
+  admin:{pwd:"164315",role:"admin"}
+};
+let currentUser = null;
+let clockRecord = JSON.parse(localStorage.getItem("clockData")) || [];
+let currentLocation = null;
+
+// 自动刷新时间
+function updateTime(){
+  const d = new Date();
+  const h = String(d.getHours()).padStart(2,"0");
+  const m = String(d.getMinutes()).padStart(2,"0");
+  const s = String(d.getSeconds()).padStart(2,"0");
+  document.getElementById("nowTime").innerText = `${h}:${m}:${s}`;
+}
+setInterval(updateTime,1000);
+updateTime();
+
+// 获取GPS定位
+function getLocation(){
+  const locTip = document.getElementById("locTip");
+  if(!navigator.geolocation){
+    locTip.innerText = "设备不支持定位";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      currentLocation = {lat: pos.coords.latitude,lng: pos.coords.longitude};
+      let dis = getDistance(COMPANY_LAT, COMPANY_LNG, currentLocation.lat, currentLocation.lng);
+      if(dis <= ALLOW_RANGE){
+        locTip.innerText = `定位正常，距公司${Math.round(dis)}米，可打卡`;
+      }else{
+        locTip.innerText = `超出打卡范围${Math.round(dis)}米，禁止打卡`;
+      }
+    },
+    function(err){
+      if(err.code === 1) locTip.innerText = "定位权限已关闭，请开启";
+      else locTip.innerText = "定位获取失败";
+      currentLocation = null;
+    },
+    {enableHighAccuracy:true,timeout:8000}
+  );
+}
+
+// 经纬度计算距离（米）
+function getDistance(lat1,lng1,lat2,lng2){
+  const rad = Math.PI / 180;
+  const a = Math.sin((lat2-lat1)*rad/2)**2 + Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin((lng2-lng1)*rad/2)**2;
+  return 2 * Math.atan2(Math.sqrt(a),Math.sqrt(1-a)) * 6371 * 1000;
+}
+
+// 判断是否迟到
+function isLate(hourStr, limitHour){
+  if(!hourStr) return "";
+  let h = parseInt(hourStr.split(":")[0]);
+  return h >= limitHour ? "<span class='late'>迟到</span>" : "<span class='normal'>正常</span>";
+}
+
+// 切换标签页
+function switchTab(pageId){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("show"));
+  event.target.classList.add("active");
+  document.getElementById(pageId+"Page").classList.add("show");
+}
+
+// 登录（记住账号，免重复登录）
+function login(){
+  const un = document.getElementById("username").value.trim();
+  const pw = document.getElementById("password").value.trim();
+  if(userList[un] && userList[un].pwd === pw){
+    currentUser = un;
+    localStorage.setItem("loginUser",un);
+    document.getElementById("loginPage").classList.add("hide");
+    document.getElementById("mainPage").classList.remove("hide");
+    if(userList[un].role !== "admin"){
+      document.querySelectorAll(".admin-show").forEach(el=>el.classList.add("hide"));
+    }
+    getLocation();
+    renderRecord();
+    renderAudit();
+  }else{
+    alert("账号或密码错误\n可用账号：emp1~emp6、admin，密码123456");
+  }
+}
+
+// 退出登录，清除记住状态
+function logout(){
+  currentUser = null;
+  localStorage.removeItem("loginUser");
+  document.getElementById("loginPage").classList.remove("hide");
+  document.getElementById("mainPage").classList.add("hide");
+}
+
+// 打卡主逻辑
+document.getElementById("clockBtn").onclick = function(){
+  const tip = document.getElementById("clockTip");
+  if(!currentLocation){
+    tip.innerText = "未获取定位，无法打卡";
+    return;
+  }
+  let dis = getDistance(COMPANY_LAT,COMPANY_LNG,currentLocation.lat,currentLocation.lng);
+  if(dis > ALLOW_RANGE){
+    tip.innerText = "不在打卡范围内，禁止打卡";
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString();
+  const timeStr = now.toLocaleTimeString();
+  const hour = now.getHours();
+
+  // 查找今日记录，结构四段打卡
+  let dayData = clockRecord.find(item=>item.user===currentUser && item.date===dateStr);
+  if(!dayData){
+    dayData = {
+      user:currentUser,
+      date:dateStr,
+      t1:"", // 11点前早打卡
+      t2:"", // 16点前中打卡
+      t3:"", // 18点前晚打卡
+      off:"",// 21点下班
+      audit:"待审核"
+    };
+    clockRecord.push(dayData);
+  }
+
+  // 四段打卡判断
+  if(!dayData.t1){
+    dayData.t1 = timeStr;
+    tip.innerText = `第一段打卡成功 ${timeStr} ${isLate(timeStr,11)}`;
+  }else if(!dayData.t2){
+    dayData.t2 = timeStr;
+    tip.innerText = `第二段打卡成功 ${timeStr} ${isLate(timeStr,16)}`;
+  }else if(!dayData.t3){
+    dayData.t3 = timeStr;
+    tip.innerText = `第三段打卡成功 ${timeStr} ${isLate(timeStr,18)}`;
+  }else if(!dayData.off){
+    if(hour>21){
+      tip.innerText = "已超过21点，下班打卡超时";
+    }else{
+      dayData.off = timeStr;
+      tip.innerText = `下班签退完成 ${timeStr}`;
+    }
+  }else{
+    tip.innerText = "今日四段打卡全部完成";
+  }
+
+  localStorage.setItem("clockData",JSON.stringify(clockRecord));
+  renderRecord();
+  renderAudit();
+}
+
+// 渲染个人记录
+function renderRecord(){
+  const box = document.getElementById("recordList");
+  box.innerHTML = "";
+  const myData = clockRecord.filter(i=>i.user===currentUser);
+  myData.forEach(item=>{
+    box.innerHTML += `<tr>
+      <td>${item.date}</td>
+      <td>${item.t1||"-"} ${isLate(item.t1,11)}</td>
+      <td>${item.t2||"-"} ${isLate(item.t2,16)}</td>
+      <td>${item.t3||"-"} ${isLate(item.t3,18)}</td>
+      <td>${item.off||"-"}</td>
+      <td>${item.audit}</td>
+    </tr>`;
+  })
+}
+
+// 管理员审核列表
+function renderAudit(){
+  const box = document.getElementById("auditList");
+  box.innerHTML = "";
+  clockRecord.forEach(item=>{
+    box.innerHTML += `<tr>
+      <td>${item.user}</td>
+      <td>${item.date}</td>
+      <td>早:${item.t1||"-"} 中:${item.t2||"-"} 晚:${item.t3||"-"} 下班:${item.off||"-"}</td>
+      <td>
+        ${item.audit==="待审核"?
+        `<span class="agree" onclick="pass('${item.user}','${item.date}')">通过</span>
+        <span class="refuse" onclick="reject('${item.user}','${item.date}')">驳回</span>`
+        :item.audit}
+      </td>
+    </tr>`;
+  })
+}
+
+function pass(u,d){
+  let row = clockRecord.find(i=>i.user===u && i.date===d);
+  if(row) row.audit = "已通过";
+  localStorage.setItem("clockData",JSON.stringify(clockRecord));
+  renderAudit();renderRecord();
+}
+function reject(u,d){
+  let row = clockRecord.find(i=>i.user===u && i.date===d);
+  if(row) row.audit = "已驳回";
+  localStorage.setItem("clockData",JSON.stringify(clockRecord));
+  renderAudit();renderRecord();
+}
+
+// 页面加载自动登录（记住账号，免输密码）
+window.onload = function(){
+  const cacheUser = localStorage.getItem("loginUser");
+  if(cacheUser && userList[cacheUser]){
+    currentUser = cacheUser;
+    document.getElementById("loginPage").classList.add("hide");
+    document.getElementById("mainPage").classList.remove("hide");
+    if(userList[cacheUser].role !== "admin"){
+      document.querySelectorAll(".admin-show").forEach(el=>el.classList.add("hide"));
+    }
+    getLocation();
+    renderRecord();
+    renderAudit();
+  }
+}
+</script>
+</body>
+</html>
