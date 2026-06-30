@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
-<title><span class="zh">员工三段打卡考勤系统</span><span class="th">ระบบลงเวลาพนักงาน</span></title>
+<title><span class="zh">员工考勤系统</span><span class="th">ระบบลงเวลาพนักงาน</span></title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system, BlinkMacSystemFont, "Microsoft YaHei";}
 body{background:#f4f5f7;padding-bottom:40px;}
@@ -87,7 +87,7 @@ th{background:#f7f8fa;}
 <div id="loginPage" class="login-wrap">
   <div class="login-card">
     <h2>
-      <span class="zh">三段打卡考勤系统</span>
+      <span class="zh">考勤系统</span>
       <span class="th">ระบบลงเวลาพนักงาน</span>
     </h2>
     <div class="input-box">
@@ -270,7 +270,7 @@ const userList = {
   TANG:{pwd:"123456",role:"user"},
   KAN:{pwd:"123456",role:"user"},
   AUM:{pwd:"123456",role:"user"},
-  admin:{pwd:"123456",role:"admin"}
+  admin:{pwd:"164315",role:"admin"}
 };
 const empList = ["FANG","AMP","PA","TANG","KAN","AUM"];
 let currentUser = null;
@@ -449,7 +449,7 @@ function closeAddModal(){document.getElementById("addRecordModal").classList.add
 function adminLogin(){
   const u = document.getElementById("adminUser").value.trim();
   const p = document.getElementById("adminPwd").value.trim();
-  if(u === "admin" && p === "123456"){
+  if(u === "admin" && p === "164315"){
     closeAdminModal();
     document.getElementById("mainPage").classList.add("hide");
     document.getElementById("adminPage").classList.remove("hide");
